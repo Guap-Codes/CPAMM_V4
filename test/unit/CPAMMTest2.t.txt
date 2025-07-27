@@ -1,0 +1,114 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.26;
+
+import {Test} from "forge-std/Test.sol";
+import {CPAMM} from "../../src/core/CPAMM.sol";
+import {CPAMMFactory} from "../../src/core/CPAMMFactory.sol";
+import {CPAMMRouter} from "../../src/periphery/CPAMMRouter.sol";
+import {CPAMMOracle} from "../../src/periphery/CPAMMOracle.sol";
+import {CPAMMGovernance} from "../../src/periphery/CPAMMGovernance.sol";
+import {CPAMMLiquidityProvider} from "../../src/periphery/CPAMMLiquidityProvider.sol";
+import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {PoolManager} from "@uniswap/v4-core/src/PoolManager.sol";
+import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
+import {Currency, CurrencyLibrary} from "@uniswap/v4-core/src/types/Currency.sol";
+import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
+import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
+import {LiquidityAmounts} from "@uniswap/v4-core/test/utils/LiquidityAmounts.sol";
+import {IPositionManager} from "v4-periphery/src/interfaces/IPositionManager.sol";
+import {EasyPosm} from "../utils/EasyPosm.sol";
+import {Fixtures} from "../utils/Fixtures.sol";
+import {MockERC20} from "../mocks/MockERC20.sol";
+import {SwapRouterNoChecks} from "../helpers/SwapRouterNoChecks.sol";
+import {PoolModifyLiquidityTest} from "../helpers/PoolModifyLiquidityTest.sol";
+import {CPAMMUtils} from "../../src/lib/CPAMMUtils.sol";
+
+contract CPAMMTest is Test, Fixtures {
+    using EasyPosm for IPositionManager;
+    using PoolIdLibrary for PoolKey;
+    using CurrencyLibrary for Currency;
+
+    CPAMM hook;
+    PoolId poolId;
+    uint256 tokenId;
+    int24 tickLower;
+    int24 tickUpper;
+
+
+    IPoolManager public poolManager;
+    MockERC20 public token0;
+    MockERC20 public token1;
+    CPAMMFactory public factory;
+    CPAMMRouter public router;
+
+    // Constants
+    uint24 constant FEE = 3000;
+
+    function setUp() public {
+        // Creates the pool manager, utility routers, and test tokens
+        deployFreshManagerAndRouters();
+        deployMintAndApprove2Currencies();
+
+        // Deploy factory and router
+        factory = new CPAMMFactory(
+            poolManager,
+            address(this),  // owner
+            address(this)   // governance
+        );
+        router = new CPAMMRouter(factory, poolManager);
+
+        // Calculate initial liquidity amounts using CPAMMUtils
+        uint256 amount0Expected = 100e18;
+        uint256 amount1Expected = 100e18;
+        uint256 initialLiquidity = CPAMMUtils.calculateInitialLiquidity(
+            amount0Expected,
+            amount1Expected
+        );
+
+        // Create pool through factory and store hook address
+        address hookAddr;
+        (poolId, hookAddr) = factory.createPool(
+            Currency.unwrap(currency0),
+            Currency.unwrap(currency1),
+            CPAMMUtils.DEFAULT_FEE,
+            SQRT_PRICE_1_1
+        );
+
+        // Store hook reference
+        hook = CPAMM(hookAddr);
+
+        // Create the pool key
+        key = PoolKey(currency0, currency1, FEE, 60, IHooks(hook));
+
+        // Initialize the pool
+        manager.initialize(key, SQRT_PRICE_1_1);
+
+        // Add initial liquidity
+        tickLower = TickMath.minUsableTick(key.tickSpacing);
+        tickUpper = TickMath.maxUsableTick(key.tickSpacing);
+
+        // Approve tokens for the router
+        token0.approve(address(router), amount0Expected);
+        token1.approve(address(router), amount1Expected);
+
+        // Add liquidity through the router
+        router.addLiquidity(
+            Currency.unwrap(currency0),
+            Currency.unwrap(currency1),
+            amount0Expected,
+            amount1Expected,
+            amount0Expected,  // minAmount0
+            amount1Expected,  // minAmount1
+            address(this),
+            block.timestamp
+        );
+    }
+
+    function testInitialState() public {
+        assertTrue(address(hook) != address(0), "Hook not deployed");
+        assertTrue(tokenId != 0, "Token not minted");
+    }
+}
+
