@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import { PoolId } from "@uniswap/v4-core/src/types/PoolId.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
 
 /**
  * @title ICPAMMFactory
@@ -13,13 +13,7 @@ import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
  */
 interface ICPAMMFactory {
     // Events
-    event PoolCreated(
-        PoolId indexed poolId,
-        address indexed token0,
-        address indexed token1,
-        uint24 fee,
-        address hook
-    );
+    event PoolCreated(PoolId indexed poolId, address indexed token0, address indexed token1, uint24 fee, address hook);
     event HookRegistered(address indexed hook, bool valid);
     event EmergencyAction(string action, address indexed triggeredBy);
     event PairCreated(PoolId indexed poolId, address pair);
@@ -41,7 +35,9 @@ interface ICPAMMFactory {
         address tokenB,
         uint24 fee,
         uint160 sqrtPriceX96
-    ) external returns (PoolId poolId, address hook);
+    )
+        external
+        returns (PoolId poolId, address hook);
 
     // View functions
 
@@ -74,9 +70,7 @@ interface ICPAMMFactory {
      * @return fee The fee tier for the pool (in basis points)
      * @return hook The address of the hook contract
      */
-    function getPoolKey(
-        PoolId poolId
-    )
+    function getPoolKey(PoolId poolId)
         external
         view
         returns (address token0, address token1, uint24 fee, address hook);
@@ -119,10 +113,7 @@ interface ICPAMMFactory {
      * @param tokenB The second token in the pair
      * @return pair The address of the pair contract
      */
-    function getPair(
-        address tokenA,
-        address tokenB
-    ) external view returns (address pair);
+    function getPair(address tokenA, address tokenB) external view returns (address pair);
 
     /**
      * @notice Gets the pool ID for a given token pair
@@ -130,8 +121,5 @@ interface ICPAMMFactory {
      * @param token1 The second token in the pair
      * @return The ID of the pool for this token pair
      */
-    function getPoolId(
-        address token0,
-        address token1
-    ) external view returns (PoolId);
+    function getPoolId(address token0, address token1) external view returns (PoolId);
 }

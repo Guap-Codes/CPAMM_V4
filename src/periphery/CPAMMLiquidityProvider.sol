@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
-import {ICPAMMFactory} from "../Interfaces/ICPAMMFactory.sol";
-import {ICPAMMHook} from "../Interfaces/ICPAMMHook.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {UniswapV4Utils} from "../lib/UniswapV4Utils.sol";
-import {CPAMMUtils} from "../lib/CPAMMUtils.sol";
-import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
-import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
-import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
+import { PoolId, PoolIdLibrary } from "@uniswap/v4-core/src/types/PoolId.sol";
+import { ICPAMMFactory } from "../Interfaces/ICPAMMFactory.sol";
+import { ICPAMMHook } from "../Interfaces/ICPAMMHook.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { UniswapV4Utils } from "../lib/UniswapV4Utils.sol";
+import { CPAMMUtils } from "../lib/CPAMMUtils.sol";
+import { BalanceDelta } from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import { Currency } from "@uniswap/v4-core/src/types/Currency.sol";
+import { IHooks } from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 
 /**
  * @title CPAMMLiquidityProvider
@@ -34,11 +34,7 @@ contract CPAMMLiquidityProvider is ReentrancyGuard {
 
     // Custom errors
     error DeadlineExpired(uint256 deadline);
-    error InsufficientLiquidity(
-        uint256 reserve0,
-        uint256 reserve1,
-        uint256 minLiquidity
-    );
+    error InsufficientLiquidity(uint256 reserve0, uint256 reserve1, uint256 minLiquidity);
     error InvalidRecipient(address recipient);
     error PoolDoesNotExist(PoolId poolId);
     error SlippageExceeded(uint256 expected, uint256 actual);
@@ -113,16 +109,7 @@ contract CPAMMLiquidityProvider is ReentrancyGuard {
         if (to == address(0)) revert InvalidRecipient(to);
 
         // Split the logic into a separate internal function to reduce stack depth
-        return
-            _addLiquidityInternal(
-                tokenA,
-                tokenB,
-                amountADesired,
-                amountBDesired,
-                amountAMin,
-                amountBMin,
-                to
-            );
+        return _addLiquidityInternal(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin, to);
     }
 
     /**
@@ -146,36 +133,20 @@ contract CPAMMLiquidityProvider is ReentrancyGuard {
         uint256 amountAMin,
         uint256 amountBMin,
         address to
-    ) internal returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
+    )
+        internal
+        returns (uint256 amountA, uint256 amountB, uint256 liquidity)
+    {
         // Get or create pool and sort tokens
-        (address token0, address token1) = UniswapV4Utils.sortTokens(
-            tokenA,
-            tokenB
-        );
+        (address token0, address token1) = UniswapV4Utils.sortTokens(tokenA, tokenB);
         PoolKey memory poolKey = _getPoolKey(token0, token1);
 
         // Calculate optimal amounts
-        (amountA, amountB) = _calculateLiquidityAmounts(
-            tokenA,
-            tokenB,
-            amountADesired,
-            amountBDesired,
-            amountAMin,
-            amountBMin
-        );
+        (amountA, amountB) =
+            _calculateLiquidityAmounts(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
 
         // Handle token transfers and liquidity addition
-        return
-            _processLiquidityAddition(
-                tokenA,
-                tokenB,
-                token0,
-                token1,
-                amountA,
-                amountB,
-                poolKey,
-                to
-            );
+        return _processLiquidityAddition(tokenA, tokenB, token0, token1, amountA, amountB, poolKey, to);
     }
 
     /**
@@ -219,14 +190,14 @@ contract CPAMMLiquidityProvider is ReentrancyGuard {
 
         // Calculate initial liquidity
         uint256 initialLiquidity = CPAMMUtils.calculateInitialLiquidity(amount0, amount1);
-        
+
         // Revert if calculated liquidity is zero
         if (initialLiquidity == 0) {
             revert InsufficientLiquidityMinted();
         }
 
         // Modify liquidity through pool manager
-        (BalanceDelta delta, ) = poolManager.modifyLiquidity(
+        (BalanceDelta delta,) = poolManager.modifyLiquidity(
             poolKey,
             IPoolManager.ModifyLiquidityParams({
                 tickLower: UniswapV4Utils.MIN_TICK,
@@ -240,7 +211,7 @@ contract CPAMMLiquidityProvider is ReentrancyGuard {
         // Convert delta.amount0() to positive uint256
         int256 amount = delta.amount0();
         liquidity = uint256(amount < 0 ? -amount : amount);
-        
+
         // Additional check for final liquidity amount
         if (liquidity == 0) {
             revert InsufficientLiquidityMinted();
@@ -249,15 +220,7 @@ contract CPAMMLiquidityProvider is ReentrancyGuard {
         finalAmountA = amountA;
         finalAmountB = amountB;
 
-        emit LiquidityAdded(
-            msg.sender,
-            tokenA,
-            tokenB,
-            amountA,
-            amountB,
-            liquidity,
-            to
-        );
+        emit LiquidityAdded(msg.sender, tokenA, tokenB, amountA, amountB, liquidity, to);
         return (finalAmountA, finalAmountB, liquidity);
     }
 
@@ -282,28 +245,18 @@ contract CPAMMLiquidityProvider is ReentrancyGuard {
         uint256 amountBMin,
         address to,
         uint256 deadline
-    ) external nonReentrant returns (uint256 amountA, uint256 amountB) {
+    )
+        external
+        nonReentrant
+        returns (uint256 amountA, uint256 amountB)
+    {
         if (block.timestamp > deadline) revert DeadlineExpired(deadline);
         if (to == address(0)) revert InvalidRecipient(to);
 
         PoolKey memory poolKey = _getPoolKey(tokenA, tokenB);
-        (amountA, amountB) = _removeLiquidity(
-            poolKey,
-            liquidity,
-            amountAMin,
-            amountBMin,
-            to
-        );
+        (amountA, amountB) = _removeLiquidity(poolKey, liquidity, amountAMin, amountBMin, to);
 
-        emit LiquidityRemoved(
-            msg.sender,
-            tokenA,
-            tokenB,
-            amountA,
-            amountB,
-            liquidity,
-            to
-        );
+        emit LiquidityRemoved(msg.sender, tokenA, tokenB, amountA, amountB, liquidity, to);
 
         return (amountA, amountB); // ✅ required
     }
@@ -328,7 +281,11 @@ contract CPAMMLiquidityProvider is ReentrancyGuard {
         uint256 amount1Desired,
         uint256 amount0Min,
         uint256 amount1Min
-    ) internal view returns (uint256 amount0, uint256 amount1) {
+    )
+        internal
+        view
+        returns (uint256 amount0, uint256 amount1)
+    {
         // Get reserves
         (uint256 reserve0, uint256 reserve1) = _getReserves(token0, token1);
 
@@ -338,15 +295,18 @@ contract CPAMMLiquidityProvider is ReentrancyGuard {
         } else {
             uint256 amount1Optimal = (amount0Desired * reserve1) / reserve0;
             if (amount1Optimal <= amount1Desired) {
-                if (amount1Optimal < amount1Min)
+                if (amount1Optimal < amount1Min) {
                     revert InsufficientAmount(amount1Optimal, amount1Min);
+                }
                 (amount0, amount1) = (amount0Desired, amount1Optimal);
             } else {
                 uint256 amount0Optimal = (amount1Desired * reserve0) / reserve1;
-                if (amount0Optimal > amount0Desired)
+                if (amount0Optimal > amount0Desired) {
                     revert ExcessiveInputAmount(amount0Desired, amount0Optimal);
-                if (amount0Optimal < amount0Min)
+                }
+                if (amount0Optimal < amount0Min) {
                     revert InsufficientAmount(amount0Optimal, amount0Min);
+                }
                 (amount0, amount1) = (amount0Optimal, amount1Desired);
             }
         }
@@ -358,25 +318,18 @@ contract CPAMMLiquidityProvider is ReentrancyGuard {
      * @param tokenB Second token in the pair
      * @return PoolKey struct containing pool parameters
      */
-    function _getPoolKey(
-        address tokenA,
-        address tokenB
-    ) internal view returns (PoolKey memory) {
-        (address token0, address token1) = UniswapV4Utils.sortTokens(
-            tokenA,
-            tokenB
-        );
+    function _getPoolKey(address tokenA, address tokenB) internal view returns (PoolKey memory) {
+        (address token0, address token1) = UniswapV4Utils.sortTokens(tokenA, tokenB);
         // lookup the real fee & hook from the factory
         PoolId pid = factory.getPoolId(token0, token1);
-        (, , uint24 fee, address hook) = factory.getPoolKey(pid);
-        return
-            PoolKey({
-                currency0: Currency.wrap(token0),
-                currency1: Currency.wrap(token1),
-                fee: fee,
-                tickSpacing: UniswapV4Utils.DEFAULT_TICK_SPACING,
-                hooks: IHooks(hook)
-            });
+        (,, uint24 fee, address hook) = factory.getPoolKey(pid);
+        return PoolKey({
+            currency0: Currency.wrap(token0),
+            currency1: Currency.wrap(token1),
+            fee: fee,
+            tickSpacing: UniswapV4Utils.DEFAULT_TICK_SPACING,
+            hooks: IHooks(hook)
+        });
     }
 
     /**
@@ -395,13 +348,16 @@ contract CPAMMLiquidityProvider is ReentrancyGuard {
         uint256 amountAMin,
         uint256 amountBMin,
         address to
-    ) internal returns (uint256 amountA, uint256 amountB) {
+    )
+        internal
+        returns (uint256 amountA, uint256 amountB)
+    {
         // Ensure the pool exists
         PoolId poolId = poolKey.toId();
         if (!factory.poolExists(poolId)) revert PoolDoesNotExist(poolId);
 
         // Remove liquidity through pool manager
-        (BalanceDelta delta, ) = poolManager.modifyLiquidity(
+        (BalanceDelta delta,) = poolManager.modifyLiquidity(
             poolKey,
             IPoolManager.ModifyLiquidityParams({
                 tickLower: UniswapV4Utils.MIN_TICK,
@@ -420,24 +376,22 @@ contract CPAMMLiquidityProvider is ReentrancyGuard {
         amountB = uint256(amount1 > 0 ? amount1 : -amount1);
 
         // Check minimum amounts
-        if (amountA < amountAMin)
+        if (amountA < amountAMin) {
             revert InsufficientAmount(amountA, amountAMin);
-        if (amountB < amountBMin)
+        }
+        if (amountB < amountBMin) {
             revert InsufficientAmount(amountB, amountBMin);
-    
+        }
+
         // Transfer tokens to recipient using Currency.unwrap() instead of toAddress()
-        if (amountA > 0)
-            IERC20(Currency.unwrap(poolKey.currency0)).safeTransfer(
-                to,
-                amountA
-            );
-        if (amountB > 0)
-            IERC20(Currency.unwrap(poolKey.currency1)).safeTransfer(
-                to,
-                amountB
-            );
+        if (amountA > 0) {
+            IERC20(Currency.unwrap(poolKey.currency0)).safeTransfer(to, amountA);
+        }
+        if (amountB > 0) {
+            IERC20(Currency.unwrap(poolKey.currency1)).safeTransfer(to, amountB);
+        }
     }
-    
+
     /**
      * @dev Retrieves current reserves for a token pair
      * @param token0 First token in the pair
@@ -445,10 +399,7 @@ contract CPAMMLiquidityProvider is ReentrancyGuard {
      * @return reserve0 Reserve amount of token0
      * @return reserve1 Reserve amount of token1
      */
-    function _getReserves(
-        address token0,
-        address token1
-    ) internal view returns (uint256 reserve0, uint256 reserve1) {
+    function _getReserves(address token0, address token1) internal view returns (uint256 reserve0, uint256 reserve1) {
         (address token0Sorted, address token1Sorted) = UniswapV4Utils.sortTokens(token0, token1);
         PoolId poolId = factory.getPoolId(token0Sorted, token1Sorted);
         if (!factory.poolExists(poolId)) revert PoolDoesNotExist(poolId);

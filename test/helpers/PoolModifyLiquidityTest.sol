@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
-import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
+import { BalanceDelta } from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import { Currency } from "@uniswap/v4-core/src/types/Currency.sol";
 
 contract PoolModifyLiquidityTest {
     IPoolManager public immutable manager;
-    
+
     constructor(IPoolManager _manager) {
         manager = _manager;
     }
@@ -19,9 +19,12 @@ contract PoolModifyLiquidityTest {
         int24 tickUpper,
         int256 liquidityDelta,
         bytes memory hookData
-    ) external returns (BalanceDelta) {
-        (BalanceDelta delta, ) = manager.modifyLiquidity(
-            key, 
+    )
+        external
+        returns (BalanceDelta)
+    {
+        (BalanceDelta delta,) = manager.modifyLiquidity(
+            key,
             IPoolManager.ModifyLiquidityParams({
                 tickLower: tickLower,
                 tickUpper: tickUpper,

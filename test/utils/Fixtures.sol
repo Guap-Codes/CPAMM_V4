@@ -1,24 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
-import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import {PositionManager} from "v4-periphery/src/PositionManager.sol";
-import {IPositionManager} from "v4-periphery/src/interfaces/IPositionManager.sol";
-import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {Deployers} from "@uniswap/v4-core/test/utils/Deployers.sol";
-import {IERC20} from "forge-std/interfaces/IERC20.sol";
-import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
-import {DeployPermit2} from "./forks/DeployPermit2.sol";
-import {IERC721Permit_v4} from "v4-periphery/src/interfaces/IERC721Permit_v4.sol";
-import {IEIP712_v4} from "v4-periphery/src/interfaces/IEIP712_v4.sol";
-import {ERC721PermitHash} from "v4-periphery/src/libraries/ERC721PermitHash.sol";
-import {IPositionDescriptor} from "v4-periphery/src/interfaces/IPositionDescriptor.sol";
-import {IWETH9} from "v4-periphery/src/interfaces/external/IWETH9.sol";
+import { Currency } from "@uniswap/v4-core/src/types/Currency.sol";
+import { BalanceDelta } from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { PositionManager } from "v4-periphery/src/PositionManager.sol";
+import { IPositionManager } from "v4-periphery/src/interfaces/IPositionManager.sol";
+import { Hooks } from "@uniswap/v4-core/src/libraries/Hooks.sol";
+import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
+import { Deployers } from "@uniswap/v4-core/test/utils/Deployers.sol";
+import { IERC20 } from "forge-std/interfaces/IERC20.sol";
+import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
+import { DeployPermit2 } from "./forks/DeployPermit2.sol";
+import { IERC721Permit_v4 } from "v4-periphery/src/interfaces/IERC721Permit_v4.sol";
+import { IEIP712_v4 } from "v4-periphery/src/interfaces/IEIP712_v4.sol";
+import { ERC721PermitHash } from "v4-periphery/src/libraries/ERC721PermitHash.sol";
+import { IPositionDescriptor } from "v4-periphery/src/interfaces/IPositionDescriptor.sol";
+import { IWETH9 } from "v4-periphery/src/interfaces/external/IWETH9.sol";
 
-/// @notice A shared test contract that wraps the v4-core deployers contract and exposes basic liquidity operations on posm.
+/// @notice A shared test contract that wraps the v4-core deployers contract and exposes basic liquidity operations on
+/// posm.
 contract Fixtures is Deployers, DeployPermit2 {
     uint256 constant STARTING_USER_BALANCE = 10_000_000 ether;
     uint256 constant MAX_SLIPPAGE_ADD_LIQUIDITY = type(uint256).max;
@@ -34,7 +35,9 @@ contract Fixtures is Deployers, DeployPermit2 {
     function deployPosm(IPoolManager poolManager) internal {
         // We use vm.etch to prevent having to use via-ir in this repository.
         etchPermit2();
-        posm = IPositionManager(new PositionManager(poolManager, permit2, 300_000, IPositionDescriptor(address(0)), IWETH9(address(0))));
+        posm = IPositionManager(
+            new PositionManager(poolManager, permit2, 300_000, IPositionDescriptor(address(0)), IWETH9(address(0)))
+        );
     }
 
     function seedBalance(address to) internal {
@@ -72,7 +75,12 @@ contract Fixtures is Deployers, DeployPermit2 {
         IERC721Permit_v4(address(posm)).permit(operator, tokenId, block.timestamp + 1, nonce, signature);
     }
 
-    function getDigest(address spender, uint256 tokenId, uint256 nonce, uint256 deadline)
+    function getDigest(
+        address spender,
+        uint256 tokenId,
+        uint256 nonce,
+        uint256 deadline
+    )
         internal
         view
         returns (bytes32 digest)

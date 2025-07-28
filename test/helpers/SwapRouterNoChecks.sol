@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
-import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
+import { BalanceDelta } from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import { Currency } from "@uniswap/v4-core/src/types/Currency.sol";
 
 contract SwapRouterNoChecks {
     IPoolManager public immutable manager;
-    
+
     constructor(IPoolManager _manager) {
         manager = _manager;
     }
@@ -19,7 +19,10 @@ contract SwapRouterNoChecks {
         int256 amountSpecified,
         uint160 sqrtPriceLimitX96,
         bytes memory hookData
-    ) external returns (BalanceDelta) {
+    )
+        external
+        returns (BalanceDelta)
+    {
         BalanceDelta delta = manager.swap(
             key,
             IPoolManager.SwapParams({

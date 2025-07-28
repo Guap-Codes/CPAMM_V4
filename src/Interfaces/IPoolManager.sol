@@ -1,8 +1,8 @@
 // SPDX‑License‑Identifier: MIT
 pragma solidity 0.8.26;
 
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
+import { BalanceDelta } from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 
 /**
  * @title IPoolManager
@@ -17,10 +17,7 @@ interface IPoolManager {
      * @param sqrtPriceX96 The initial square root price of the pool as a Q64.96 value
      * @return poolId The ID of the newly created pool
      */
-    function initialize(
-        PoolKey calldata key,
-        uint160 sqrtPriceX96
-    ) external returns (bytes32 poolId);
+    function initialize(PoolKey calldata key, uint160 sqrtPriceX96) external returns (bytes32 poolId);
 
     /**
      * @dev Parameters for modifying liquidity in a pool
@@ -48,7 +45,9 @@ interface IPoolManager {
         PoolKey calldata key,
         ModifyLiquidityParams calldata params,
         bytes calldata data
-    ) external returns (BalanceDelta callerDelta, BalanceDelta feesAccrued);
+    )
+        external
+        returns (BalanceDelta callerDelta, BalanceDelta feesAccrued);
 
     /**
      * @dev Parameters for executing a swap in a pool
@@ -73,7 +72,9 @@ interface IPoolManager {
         PoolKey calldata key,
         SwapParams calldata params,
         bytes calldata data
-    ) external returns (BalanceDelta swapDelta);
+    )
+        external
+        returns (BalanceDelta swapDelta);
 
     /**
      * @notice Retrieves the address of a pool given its key

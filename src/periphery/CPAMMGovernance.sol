@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {ICPAMMFactory} from "../Interfaces/ICPAMMFactory.sol";
-import {ICPAMMHook} from "../Interfaces/ICPAMMHook.sol";
-import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {CPAMMUtils} from "../lib/CPAMMUtils.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { ICPAMMFactory } from "../Interfaces/ICPAMMFactory.sol";
+import { ICPAMMHook } from "../Interfaces/ICPAMMHook.sol";
+import { PoolId } from "@uniswap/v4-core/src/types/PoolId.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { CPAMMUtils } from "../lib/CPAMMUtils.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
 /**
  * @title CPAMMGovernance
@@ -31,8 +31,13 @@ contract CPAMMGovernance is Ownable, Pausable, ReentrancyGuard, AccessControl {
     /**
      * @dev Enum representing the various states a proposal can be in
      */
-    enum ProposalState { Pending, Active, Executed, Cancelled }
-    
+    enum ProposalState {
+        Pending,
+        Active,
+        Executed,
+        Cancelled
+    }
+
     /**
      * @dev Struct representing a governance proposal
      * @param id Unique identifier for the proposal
@@ -71,7 +76,7 @@ contract CPAMMGovernance is Ownable, Pausable, ReentrancyGuard, AccessControl {
     error InvalidDelay(uint256 delay, uint256 minDelay, uint256 maxDelay);
     error InvalidProposal(uint256 proposalId);
     error InvalidPoolId(PoolId poolId);
-    error UnauthorizedCaller(/*address caller*/);
+    error UnauthorizedCaller( /*address caller*/ );
     error ProposalNotActive(uint256 proposalId);
     error DelayNotElapsed(uint256 current, uint256 required);
     error InvalidFactory(address factory);
@@ -85,10 +90,7 @@ contract CPAMMGovernance is Ownable, Pausable, ReentrancyGuard, AccessControl {
      * @param _poolManager Address of the Uniswap V4 PoolManager
      * @param _factory Address of the CPAMM factory contract
      */
-    constructor(
-        IPoolManager _poolManager,
-        address _factory
-    ) Ownable(msg.sender) {
+    constructor(IPoolManager _poolManager, address _factory) Ownable(msg.sender) {
         poolManager = _poolManager;
         factory = ICPAMMFactory(_factory);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -106,14 +108,11 @@ contract CPAMMGovernance is Ownable, Pausable, ReentrancyGuard, AccessControl {
      * @param delay Execution delay (must be between MIN_DELAY and MAX_DELAY)
      * @return proposalId The ID of the newly created proposal
      */
-    function createProposal(PoolId poolId, uint24 newFee, uint256 delay) 
-        external 
-        whenNotPaused 
-        returns (uint256)
-    {       
+    function createProposal(PoolId poolId, uint24 newFee, uint256 delay) external whenNotPaused returns (uint256) {
         // Allow owner to create proposals without additional roles
-        if (msg.sender != owner() && !hasRole(PROPOSER_ROLE, msg.sender) && !isAuthorized[msg.sender]) 
-            revert UnauthorizedCaller(/*msg.sender*/);
+        if (msg.sender != owner() && !hasRole(PROPOSER_ROLE, msg.sender) && !isAuthorized[msg.sender]) {
+            revert UnauthorizedCaller( /*msg.sender*/ );
+        }
         if (!factory.validatePool(poolId)) revert InvalidPoolId(poolId);
         if (newFee > MAX_FEE) revert InvalidFee(newFee, uint24(MAX_FEE));
         if (delay < MIN_DELAY || delay > MAX_DELAY) revert InvalidDelay(delay, MIN_DELAY, MAX_DELAY);
@@ -148,7 +147,7 @@ contract CPAMMGovernance is Ownable, Pausable, ReentrancyGuard, AccessControl {
         ICPAMMHook hook = ICPAMMHook(factory.getHook(proposal.poolId));
         bool success = hook.updateFee(proposal.poolId, proposal.newFee);
         require(success, "Fee update failed");
-        
+
         proposal.state = ProposalState.Executed;
         lastFeeUpdate[proposal.poolId] = block.timestamp;
 
@@ -163,8 +162,8 @@ contract CPAMMGovernance is Ownable, Pausable, ReentrancyGuard, AccessControl {
     function cancelProposal(uint256 proposalId) external {
         Proposal storage proposal = proposals[proposalId];
         if (proposal.state != ProposalState.Active) revert ProposalNotActive(proposalId);
-        if (msg.sender != proposal.proposer && !isAuthorized[msg.sender]) revert UnauthorizedCaller(/*msg.sender*/);
-        
+        if (msg.sender != proposal.proposer && !isAuthorized[msg.sender]) revert UnauthorizedCaller( /*msg.sender*/ );
+
         proposal.state = ProposalState.Cancelled;
         emit ProposalCancelled(proposalId);
     }

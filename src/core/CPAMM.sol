@@ -1,29 +1,30 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
-import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
-import {BeforeSwapDelta} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
-import {ICPAMMHook} from "../Interfaces/ICPAMMHook.sol";
-import {CPAMMUtils} from "../lib/CPAMMUtils.sol";
-import {UniswapV4Utils} from "../lib/UniswapV4Utils.sol";
-import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
-import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ICPAMMFactory} from "../Interfaces/ICPAMMFactory.sol";
-import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { Hooks } from "@uniswap/v4-core/src/libraries/Hooks.sol";
+import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
+import { PoolId, PoolIdLibrary } from "@uniswap/v4-core/src/types/PoolId.sol";
+import { BalanceDelta } from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import { BeforeSwapDelta } from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
+import { ICPAMMHook } from "../Interfaces/ICPAMMHook.sol";
+import { CPAMMUtils } from "../lib/CPAMMUtils.sol";
+import { UniswapV4Utils } from "../lib/UniswapV4Utils.sol";
+import { IHooks } from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import { Currency } from "@uniswap/v4-core/src/types/Currency.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ICPAMMFactory } from "../Interfaces/ICPAMMFactory.sol";
+import { FixedPointMathLib } from "solmate/src/utils/FixedPointMathLib.sol";
 
 /**
  * @title Concentrated Liquidity AMM (CPAMM)
- * @dev A high-performance, permissionless automated market maker building on Uniswap V4's concentrated liquidity primitives
+ * @dev A high-performance, permissionless automated market maker building on Uniswap V4's concentrated liquidity
+ * primitives
  * @notice This contract implements a concentrated liquidity AMM with custom price ranges, improved capital efficiency,
  *         and tighter spreads. It serves as the core contract for the CPAMM protocol, handling all pool operations
  *         including swaps, liquidity provision, and fee management.
- * 
+ *
  * Key Features:
  * - Concentrated liquidity with custom price ranges
  * - Permissionless market making
@@ -31,7 +32,7 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
  * - Anti-MEV measures (trade cooldowns, blacklisting)
  * - Slippage protection
  * - Protocol fee collection
- * 
+ *
  * Security Considerations:
  * - All state-changing functions are protected by hook call validation
  * - Critical parameters are governance-controlled
@@ -87,13 +88,8 @@ contract CPAMM is ICPAMMHook {
     mapping(address => uint256) public lastTradeTimestamp;
     uint256 public constant TRADE_COOLDOWN = 1 minutes;
     uint256 public constant MAX_SLIPPAGE = 200;
-   
-    event PoolInitialized(
-        PoolId indexed poolId,
-        address indexed initializer,
-        uint160 sqrtPriceX96,
-        int24 tick
-    );
+
+    event PoolInitialized(PoolId indexed poolId, address indexed initializer, uint160 sqrtPriceX96, int24 tick);
     event SwapCompleted(
         address indexed sender,
         PoolId indexed poolId,
@@ -102,31 +98,13 @@ contract CPAMM is ICPAMMHook {
         int128 amount0,
         int128 amount1
     );
-    event ProtocolFeesCollected(
-        PoolId indexed poolId,
-        uint256 fee0,
-        uint256 fee1
-    );
+    event ProtocolFeesCollected(PoolId indexed poolId, uint256 fee0, uint256 fee1);
     event DonationProcessed(
-        address indexed donor,
-        PoolId indexed poolId,
-        uint256 amount0,
-        uint256 amount1,
-        string purpose
+        address indexed donor, PoolId indexed poolId, uint256 amount0, uint256 amount1, string purpose
     );
-    event Mint(
-        address indexed user,
-        uint256 amount0,
-        uint256 amount1,
-        uint256 liquidity
-    );
+    event Mint(address indexed user, uint256 amount0, uint256 amount1, uint256 liquidity);
     event Transfer(address indexed from, address indexed to, uint256 value);
-    event Burn(
-        address indexed user,
-        uint256 amount0,
-        uint256 amount1,
-        uint256 liquidity
-    );
+    event Burn(address indexed user, uint256 amount0, uint256 amount1, uint256 liquidity);
     event Swap(
         address indexed sender,
         uint256 amount0In,
@@ -164,14 +142,14 @@ contract CPAMM is ICPAMMHook {
         governance = _governance;
         currentFee = _fee;
         protocolFee = _protocolFee;
-        factory = _factory; 
+        factory = _factory;
 
         // Set up hook permissions
         Hooks.Permissions memory permissions = Hooks.Permissions({
             beforeInitialize: true,
             afterInitialize: true,
-            beforeAddLiquidity: true, 
-            afterAddLiquidity: true, 
+            beforeAddLiquidity: true,
+            afterAddLiquidity: true,
             beforeRemoveLiquidity: true,
             afterRemoveLiquidity: true,
             beforeSwap: true,
@@ -189,16 +167,9 @@ contract CPAMM is ICPAMMHook {
 
         // Calculate expected hook flags (14-bit mask)
         uint160 expectedFlags = uint160(
-            Hooks.BEFORE_INITIALIZE_FLAG |
-                Hooks.AFTER_INITIALIZE_FLAG |
-                Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
-                Hooks.AFTER_ADD_LIQUIDITY_FLAG |
-                Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG |
-                Hooks.AFTER_REMOVE_LIQUIDITY_FLAG |
-                Hooks.BEFORE_SWAP_FLAG |
-                Hooks.AFTER_SWAP_FLAG |
-                Hooks.BEFORE_DONATE_FLAG |
-                Hooks.AFTER_DONATE_FLAG
+            Hooks.BEFORE_INITIALIZE_FLAG | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG
+                | Hooks.AFTER_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG | Hooks.AFTER_REMOVE_LIQUIDITY_FLAG
+                | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.BEFORE_DONATE_FLAG | Hooks.AFTER_DONATE_FLAG
         );
 
         // Get actual hook address bits using mask
@@ -214,17 +185,14 @@ contract CPAMM is ICPAMMHook {
      * @notice Can only be called once per pool
      */
     function initialize(PoolKey memory _poolKey) external {
-        require(
-            Currency.unwrap(currency0) == address(0),
-            "Already initialized"
-        );
+        require(Currency.unwrap(currency0) == address(0), "Already initialized");
         poolKey = _poolKey;
         poolId = _poolKey.toId();
         currency0 = _poolKey.currency0;
         currency1 = _poolKey.currency1;
     }
 
-     /**
+    /**
      * @dev Validates that the caller is the PoolManager
      * @notice Internal function used to validate hook calls
      */
@@ -232,18 +200,13 @@ contract CPAMM is ICPAMMHook {
         require(msg.sender == address(poolManager), "Invalid caller");
     }
 
-     /**
+    /**
      * @dev Converts a sqrt price to an actual price
      * @param sqrtPriceX96 The sqrt price as Q64.96
      * @return price The actual price (token1 per token0)
      */
-    function _sqrtPriceToPrice(
-        uint160 sqrtPriceX96
-    ) internal pure returns (uint256) {
-        uint256 price = uint256(sqrtPriceX96).mulDivDown(
-            uint256(sqrtPriceX96),
-            2 ** 96
-        );
+    function _sqrtPriceToPrice(uint160 sqrtPriceX96) internal pure returns (uint256) {
+        uint256 price = uint256(sqrtPriceX96).mulDivDown(uint256(sqrtPriceX96), 2 ** 96);
         return price;
     }
 
@@ -260,14 +223,18 @@ contract CPAMM is ICPAMMHook {
         address sender,
         PoolKey calldata key,
         uint160 sqrtPriceX96
-    ) external view override returns (bytes4) {
+    )
+        external
+        view
+        override
+        returns (bytes4)
+    {
         // Validate sender is not blacklisted
         require(!isBlacklisted[sender], "Sender blacklisted");
 
         // Validate initial price is within bounds
         require(
-            sqrtPriceX96 >= UniswapV4Utils.MIN_SQRT_RATIO &&
-                sqrtPriceX96 <= UniswapV4Utils.MAX_SQRT_RATIO,
+            sqrtPriceX96 >= UniswapV4Utils.MIN_SQRT_RATIO && sqrtPriceX96 <= UniswapV4Utils.MAX_SQRT_RATIO,
             "Invalid initial price"
         );
 
@@ -277,7 +244,7 @@ contract CPAMM is ICPAMMHook {
         return ICPAMMHook.beforeInitialize.selector;
     }
 
-      /**
+    /**
      * @dev Hook called after pool initialization
      * @param sender The address that initialized the pool
      * @param key The pool key defining the pool parameters
@@ -291,7 +258,11 @@ contract CPAMM is ICPAMMHook {
         PoolKey calldata key,
         uint160 sqrtPriceX96,
         int24 tick
-    ) external override returns (bytes4) {
+    )
+        external
+        override
+        returns (bytes4)
+    {
         _validateCaller();
         PoolId poolId = key.toId();
 
@@ -309,7 +280,7 @@ contract CPAMM is ICPAMMHook {
             lastK: 0,
             lastUpdateTimestamp: block.timestamp,
             lastPrice: price // Add this field to PoolState struct
-        });
+         });
 
         emit PoolInitialized(poolId, sender, sqrtPriceX96, tick);
         return ICPAMMHook.afterInitialize.selector;
@@ -336,15 +307,17 @@ contract CPAMM is ICPAMMHook {
         PoolKey calldata _key,
         IPoolManager.ModifyLiquidityParams calldata _params,
         bytes calldata _hookData
-    ) external view override returns (bytes4) {
+    )
+        external
+        view
+        override
+        returns (bytes4)
+    {
         // Check if sender is blacklisted
         require(!isBlacklisted[_sender], "Sender blacklisted");
 
         // Ensure sufficient cooldown between operations
-        require(
-            block.timestamp >= lastTradeTimestamp[_sender] + TRADE_COOLDOWN,
-            "Operation too soon"
-        );
+        require(block.timestamp >= lastTradeTimestamp[_sender] + TRADE_COOLDOWN, "Operation too soon");
 
         // Validate pool exists
         PoolId poolId = _key.toId();
@@ -353,8 +326,7 @@ contract CPAMM is ICPAMMHook {
 
         // Validate position range
         require(
-            _params.tickLower >= UniswapV4Utils.MIN_TICK &&
-                _params.tickUpper <= UniswapV4Utils.MAX_TICK,
+            _params.tickLower >= UniswapV4Utils.MIN_TICK && _params.tickUpper <= UniswapV4Utils.MAX_TICK,
             "Invalid tick range"
         );
 
@@ -387,7 +359,11 @@ contract CPAMM is ICPAMMHook {
         IPoolManager.ModifyLiquidityParams calldata _params,
         BalanceDelta _delta,
         bytes calldata _hookData
-    ) external override returns (bytes4) {
+    )
+        external
+        override
+        returns (bytes4)
+    {
         // Get pool state
         PoolId poolId = _key.toId();
         PoolState storage state = poolStates[poolId];
@@ -408,15 +384,10 @@ contract CPAMM is ICPAMMHook {
         // Track position changes using _params
         if (_params.liquidityDelta > 0) {
             // Adding liquidity
-            require(
-                _params.tickLower < _params.tickUpper,
-                "Invalid tick range"
-            );
+            require(_params.tickLower < _params.tickUpper, "Invalid tick range");
 
             // Update tick tracking if needed
-            if (
-                _params.tickLower < state.tick && _params.tickUpper > state.tick
-            ) {
+            if (_params.tickLower < state.tick && _params.tickUpper > state.tick) {
                 // Position spans current tick
                 // Additional logic for active positions can be added here
             }
@@ -424,8 +395,7 @@ contract CPAMM is ICPAMMHook {
             // Removing liquidity
             // Ensure minimum liquidity remains
             require(
-                state.reserve0 >= CPAMMUtils.MIN_LIQUIDITY &&
-                    state.reserve1 >= CPAMMUtils.MIN_LIQUIDITY,
+                state.reserve0 >= CPAMMUtils.MIN_LIQUIDITY && state.reserve1 >= CPAMMUtils.MIN_LIQUIDITY,
                 "Insufficient remaining liquidity"
             );
         }
@@ -443,21 +413,11 @@ contract CPAMM is ICPAMMHook {
             uint256 customSlippageTolerance = abi.decode(_hookData, (uint256));
 
             // Validate and apply custom slippage tolerance
-            require(
-                customSlippageTolerance <= MAX_SLIPPAGE,
-                "Slippage too high"
-            );
+            require(customSlippageTolerance <= MAX_SLIPPAGE, "Slippage too high");
 
             // Calculate actual slippage from reserves change
-            uint256 actualSlippage = calculateSlippageFromDelta(
-                _delta,
-                state.reserve0,
-                state.reserve1
-            );
-            require(
-                actualSlippage <= customSlippageTolerance,
-                "Slippage exceeded"
-            );
+            uint256 actualSlippage = calculateSlippageFromDelta(_delta, state.reserve0, state.reserve1);
+            require(actualSlippage <= customSlippageTolerance, "Slippage exceeded");
         }
 
         return ICPAMMHook.afterModifyPosition.selector;
@@ -483,21 +443,18 @@ contract CPAMM is ICPAMMHook {
         PoolKey calldata key,
         IPoolManager.SwapParams calldata params,
         bytes calldata hookData
-    ) external override returns (bytes4, BeforeSwapDelta, uint24) {
+    )
+        external
+        override
+        returns (bytes4, BeforeSwapDelta, uint24)
+    {
         // Anti-MEV: Check trade cooldown
-        require(
-            block.timestamp >= lastTradeTimestamp[sender] + TRADE_COOLDOWN,
-            "Trade too soon"
-        );
+        require(block.timestamp >= lastTradeTimestamp[sender] + TRADE_COOLDOWN, "Trade too soon");
 
         // Slippage protection
         if (params.sqrtPriceLimitX96 != 0) {
-            uint256 priceImpact = calculatePriceImpact(
-                params.zeroForOne,
-                params.amountSpecified,
-                params.sqrtPriceLimitX96,
-                key.toId()
-            );
+            uint256 priceImpact =
+                calculatePriceImpact(params.zeroForOne, params.amountSpecified, params.sqrtPriceLimitX96, key.toId());
             require(priceImpact <= MAX_SLIPPAGE, "Excessive slippage");
         }
 
@@ -534,7 +491,11 @@ contract CPAMM is ICPAMMHook {
         IPoolManager.SwapParams calldata params,
         BalanceDelta delta,
         bytes calldata hookData
-    ) external override returns (bytes4, int128) {
+    )
+        external
+        override
+        returns (bytes4, int128)
+    {
         PoolId poolId = key.toId();
         PoolState storage state = poolStates[poolId];
 
@@ -556,40 +517,23 @@ contract CPAMM is ICPAMMHook {
 
         // Calculate and verify price impact if specified in params
         if (params.sqrtPriceLimitX96 != 0) {
-            uint256 priceImpact = calculatePriceImpact(
-                params.zeroForOne,
-                params.amountSpecified,
-                params.sqrtPriceLimitX96,
-                poolId
-            );
-            require(
-                priceImpact <= MAX_SLIPPAGE,
-                "Post-swap: Excessive slippage"
-            );
+            uint256 priceImpact =
+                calculatePriceImpact(params.zeroForOne, params.amountSpecified, params.sqrtPriceLimitX96, poolId);
+            require(priceImpact <= MAX_SLIPPAGE, "Post-swap: Excessive slippage");
         }
 
         // Process any custom parameters from hookData
         if (hookData.length > 0) {
             // Example: Decode custom slippage tolerance
             uint256 userSlippageTolerance = abi.decode(hookData, (uint256));
-            require(
-                userSlippageTolerance <= MAX_SLIPPAGE,
-                "Custom slippage exceeded"
-            );
+            require(userSlippageTolerance <= MAX_SLIPPAGE, "Custom slippage exceeded");
         }
 
         state.lastK = state.reserve0 * state.reserve1;
         state.lastUpdateTimestamp = block.timestamp;
 
         // You might want to emit an event with swap details
-        emit SwapCompleted(
-            sender,
-            poolId,
-            params.zeroForOne,
-            params.amountSpecified,
-            delta.amount0(),
-            delta.amount1()
-        );
+        emit SwapCompleted(sender, poolId, params.zeroForOne, params.amountSpecified, delta.amount0(), delta.amount1());
 
         return (ICPAMMHook.afterSwap.selector, 0);
     }
@@ -615,7 +559,12 @@ contract CPAMM is ICPAMMHook {
         PoolKey calldata key,
         IPoolManager.ModifyLiquidityParams calldata params,
         bytes calldata hookData
-    ) external view override returns (bytes4) {
+    )
+        external
+        view
+        override
+        returns (bytes4)
+    {
         // Validate sender is not blacklisted
         require(!isBlacklisted[sender], "Sender blacklisted");
 
@@ -626,38 +575,29 @@ contract CPAMM is ICPAMMHook {
 
         // Validate position range
         require(
-            params.tickLower >= UniswapV4Utils.MIN_TICK &&
-                params.tickUpper <= UniswapV4Utils.MAX_TICK,
+            params.tickLower >= UniswapV4Utils.MIN_TICK && params.tickUpper <= UniswapV4Utils.MAX_TICK,
             "Invalid tick range"
         );
 
         // Minimum liquidity check
         require(
-            params.liquidityDelta > 0 ||
-                (state.reserve0 > CPAMMUtils.MIN_LIQUIDITY &&
-                    state.reserve1 > CPAMMUtils.MIN_LIQUIDITY),
+            params.liquidityDelta > 0
+                || (state.reserve0 > CPAMMUtils.MIN_LIQUIDITY && state.reserve1 > CPAMMUtils.MIN_LIQUIDITY),
             "Insufficient liquidity"
         );
 
         // Parse custom parameters if hookData is provided
         if (hookData.length > 0) {
             // Example: Decode custom slippage tolerance and minimum liquidity
-            (uint256 userSlippageTolerance, uint256 userMinLiquidity) = abi
-                .decode(hookData, (uint256, uint256));
+            (uint256 userSlippageTolerance, uint256 userMinLiquidity) = abi.decode(hookData, (uint256, uint256));
 
             // Validate custom parameters
             require(userSlippageTolerance <= MAX_SLIPPAGE, "Slippage too high");
-            require(
-                userMinLiquidity >= CPAMMUtils.MIN_LIQUIDITY,
-                "Min liquidity too low"
-            );
+            require(userMinLiquidity >= CPAMMUtils.MIN_LIQUIDITY, "Min liquidity too low");
 
             // Additional validation using custom parameters
             if (params.liquidityDelta > 0) {
-                require(
-                    uint256(params.liquidityDelta) >= userMinLiquidity,
-                    "Below user minimum liquidity"
-                );
+                require(uint256(params.liquidityDelta) >= userMinLiquidity, "Below user minimum liquidity");
             }
         }
 
@@ -688,7 +628,11 @@ contract CPAMM is ICPAMMHook {
         BalanceDelta _delta,
         BalanceDelta _feesAccrued,
         bytes calldata _hookData
-    ) external override returns (bytes4, BalanceDelta) {
+    )
+        external
+        override
+        returns (bytes4, BalanceDelta)
+    {
         PoolId poolId = _key.toId();
         PoolState storage state = poolStates[poolId];
 
@@ -722,12 +666,8 @@ contract CPAMM is ICPAMMHook {
             // Process protocol fees if configured
             if (state.protocolFee > 0) {
                 // Calculate protocol fees
-                uint256 protocolFee0 = (uint256(
-                    uint128(_feesAccrued.amount0())
-                ) * state.protocolFee) / 10000;
-                uint256 protocolFee1 = (uint256(
-                    uint128(_feesAccrued.amount1())
-                ) * state.protocolFee) / 10000;
+                uint256 protocolFee0 = (uint256(uint128(_feesAccrued.amount0())) * state.protocolFee) / 10_000;
+                uint256 protocolFee1 = (uint256(uint128(_feesAccrued.amount1())) * state.protocolFee) / 10_000;
 
                 // Deduct protocol fees from reserves
                 if (protocolFee0 > 0) {
@@ -748,21 +688,11 @@ contract CPAMM is ICPAMMHook {
             uint256 customSlippageTolerance = abi.decode(_hookData, (uint256));
 
             // Validate and apply custom slippage tolerance
-            require(
-                customSlippageTolerance <= MAX_SLIPPAGE,
-                "Slippage too high"
-            );
+            require(customSlippageTolerance <= MAX_SLIPPAGE, "Slippage too high");
 
             // Calculate actual slippage from reserves change
-            uint256 actualSlippage = calculateSlippageFromDelta(
-                _delta,
-                state.reserve0,
-                state.reserve1
-            );
-            require(
-                actualSlippage <= customSlippageTolerance,
-                "Slippage exceeded"
-            );
+            uint256 actualSlippage = calculateSlippageFromDelta(_delta, state.reserve0, state.reserve1);
+            require(actualSlippage <= customSlippageTolerance, "Slippage exceeded");
         }
 
         // Update last operation timestamp for the sender
@@ -771,10 +701,7 @@ contract CPAMM is ICPAMMHook {
         // Update tick tracking if needed
         if (_params.tickLower <= state.tick && _params.tickUpper > state.tick) {
             // Update the current tick if necessary
-            state.tick =
-                _params.tickLower +
-                (_params.tickUpper - _params.tickLower) /
-                2;
+            state.tick = _params.tickLower + (_params.tickUpper - _params.tickLower) / 2;
         }
 
         return (ICPAMMHook.afterAddLiquidity.selector, BalanceDelta.wrap(0));
@@ -801,7 +728,12 @@ contract CPAMM is ICPAMMHook {
         PoolKey calldata _key,
         IPoolManager.ModifyLiquidityParams calldata _params,
         bytes calldata _hookData
-    ) external view override returns (bytes4) {
+    )
+        external
+        view
+        override
+        returns (bytes4)
+    {
         // Check if sender is blacklisted
         require(!isBlacklisted[_sender], "Sender blacklisted");
 
@@ -814,35 +746,26 @@ contract CPAMM is ICPAMMHook {
 
         // Validate position range
         require(
-            _params.tickLower >= UniswapV4Utils.MIN_TICK &&
-                _params.tickUpper <= UniswapV4Utils.MAX_TICK,
+            _params.tickLower >= UniswapV4Utils.MIN_TICK && _params.tickUpper <= UniswapV4Utils.MAX_TICK,
             "Invalid tick range"
         );
 
         // Ensure sufficient cooldown between operations
-        require(
-            block.timestamp >= lastTradeTimestamp[_sender] + TRADE_COOLDOWN,
-            "Operation too soon"
-        );
+        require(block.timestamp >= lastTradeTimestamp[_sender] + TRADE_COOLDOWN, "Operation too soon");
 
         // If hookData is provided, process custom parameters
         if (_hookData.length > 0) {
-            uint256 userMinRemainingLiquidity = abi.decode(
-                _hookData,
-                (uint256)
-            );
+            uint256 userMinRemainingLiquidity = abi.decode(_hookData, (uint256));
 
             // Ensure remaining liquidity after removal won't go below user-specified minimum
             require(
-                state.reserve0 > userMinRemainingLiquidity &&
-                    state.reserve1 > userMinRemainingLiquidity,
+                state.reserve0 > userMinRemainingLiquidity && state.reserve1 > userMinRemainingLiquidity,
                 "Insufficient remaining liquidity"
             );
         } else {
             // Default minimum liquidity check
             require(
-                state.reserve0 > CPAMMUtils.MIN_LIQUIDITY &&
-                    state.reserve1 > CPAMMUtils.MIN_LIQUIDITY,
+                state.reserve0 > CPAMMUtils.MIN_LIQUIDITY && state.reserve1 > CPAMMUtils.MIN_LIQUIDITY,
                 "Below minimum liquidity"
             );
         }
@@ -874,21 +797,19 @@ contract CPAMM is ICPAMMHook {
         BalanceDelta _delta,
         BalanceDelta _feesAccrued,
         bytes calldata _hookData
-    ) external override returns (bytes4, BalanceDelta) {
+    )
+        external
+        override
+        returns (bytes4, BalanceDelta)
+    {
         // Get pool state
         PoolId poolId = _key.toId();
         PoolState storage state = poolStates[poolId];
 
         // Validate liquidity parameters
         require(_params.tickLower < _params.tickUpper, "Invalid tick range");
-        require(
-            _params.tickLower >= UniswapV4Utils.MIN_TICK,
-            "Lower tick too low"
-        );
-        require(
-            _params.tickUpper <= UniswapV4Utils.MAX_TICK,
-            "Upper tick too high"
-        );
+        require(_params.tickLower >= UniswapV4Utils.MIN_TICK, "Lower tick too low");
+        require(_params.tickUpper <= UniswapV4Utils.MAX_TICK, "Upper tick too high");
 
         // Ensure liquidityDelta is negative for removal
         require(_params.liquidityDelta < 0, "LiquidityDelta must be negative");
@@ -897,10 +818,7 @@ contract CPAMM is ICPAMMHook {
         if (_params.tickLower <= state.tick && _params.tickUpper > state.tick) {
             // Update active liquidity tracking if needed
             // This is where you might want to update any active liquidity tracking
-            state.tick =
-                _params.tickLower +
-                (_params.tickUpper - _params.tickLower) /
-                2;
+            state.tick = _params.tickLower + (_params.tickUpper - _params.tickLower) / 2;
         }
 
         // Update reserves based on delta
@@ -921,12 +839,8 @@ contract CPAMM is ICPAMMHook {
             // Process protocol fees if configured
             if (state.protocolFee > 0) {
                 // Calculate protocol fees
-                uint256 protocolFee0 = (uint256(
-                    uint128(_feesAccrued.amount0())
-                ) * state.protocolFee) / 10000;
-                uint256 protocolFee1 = (uint256(
-                    uint128(_feesAccrued.amount1())
-                ) * state.protocolFee) / 10000;
+                uint256 protocolFee0 = (uint256(uint128(_feesAccrued.amount0())) * state.protocolFee) / 10_000;
+                uint256 protocolFee1 = (uint256(uint128(_feesAccrued.amount1())) * state.protocolFee) / 10_000;
 
                 // Deduct protocol fees from reserves
                 if (protocolFee0 > 0) {
@@ -948,20 +862,10 @@ contract CPAMM is ICPAMMHook {
         // Process any custom parameters from hookData
         if (_hookData.length > 0) {
             uint256 customSlippageTolerance = abi.decode(_hookData, (uint256));
-            require(
-                customSlippageTolerance <= MAX_SLIPPAGE,
-                "Slippage too high"
-            );
+            require(customSlippageTolerance <= MAX_SLIPPAGE, "Slippage too high");
 
-            uint256 actualSlippage = calculateSlippageFromDelta(
-                _delta,
-                state.reserve0,
-                state.reserve1
-            );
-            require(
-                actualSlippage <= customSlippageTolerance,
-                "Slippage exceeded"
-            );
+            uint256 actualSlippage = calculateSlippageFromDelta(_delta, state.reserve0, state.reserve1);
+            require(actualSlippage <= customSlippageTolerance, "Slippage exceeded");
         }
 
         // Update last operation timestamp
@@ -993,7 +897,12 @@ contract CPAMM is ICPAMMHook {
         uint256 _amount0,
         uint256 _amount1,
         bytes calldata _hookData
-    ) external view override returns (bytes4) {
+    )
+        external
+        view
+        override
+        returns (bytes4)
+    {
         // Check if sender is blacklisted
         require(!isBlacklisted[_sender], "Sender blacklisted");
 
@@ -1009,8 +918,7 @@ contract CPAMM is ICPAMMHook {
 
         // Ensure donation won't overflow reserves
         require(
-            state.reserve0 + _amount0 >= state.reserve0 &&
-                state.reserve1 + _amount1 >= state.reserve1,
+            state.reserve0 + _amount0 >= state.reserve0 && state.reserve1 + _amount1 >= state.reserve1,
             "Donation overflow"
         );
 
@@ -1018,10 +926,7 @@ contract CPAMM is ICPAMMHook {
         if (_hookData.length > 0) {
             // Example: Decode maximum donation limit
             uint256 maxDonationLimit = abi.decode(_hookData, (uint256));
-            require(
-                _amount0 <= maxDonationLimit && _amount1 <= maxDonationLimit,
-                "Donation exceeds limit"
-            );
+            require(_amount0 <= maxDonationLimit && _amount1 <= maxDonationLimit, "Donation exceeds limit");
         }
 
         return ICPAMMHook.beforeDonate.selector;
@@ -1047,7 +952,11 @@ contract CPAMM is ICPAMMHook {
         uint256 _amount0,
         uint256 _amount1,
         bytes calldata _hookData
-    ) external override returns (bytes4) {
+    )
+        external
+        override
+        returns (bytes4)
+    {
         // Get pool state
         PoolId poolId = _key.toId();
         PoolState storage state = poolStates[poolId];
@@ -1064,13 +973,7 @@ contract CPAMM is ICPAMMHook {
         if (_hookData.length > 0) {
             // Example: Decode donation purpose or metadata
             string memory donationPurpose = abi.decode(_hookData, (string));
-            emit DonationProcessed(
-                _sender,
-                poolId,
-                _amount0,
-                _amount1,
-                donationPurpose
-            );
+            emit DonationProcessed(_sender, poolId, _amount0, _amount1, donationPurpose);
         } else {
             emit DonationProcessed(_sender, poolId, _amount0, _amount1, "");
         }
@@ -1085,9 +988,7 @@ contract CPAMM is ICPAMMHook {
      * @return price The current price (token1 per token0)
      * @return timestamp The last update timestamp
      */
-    function getPrice(
-        PoolId poolId
-    ) external view override returns (uint256 price, uint256 timestamp) {
+    function getPrice(PoolId poolId) external view override returns (uint256 price, uint256 timestamp) {
         PoolState storage state = poolStates[poolId];
         return (state.lastPrice, state.lastUpdateTimestamp);
     }
@@ -1098,30 +999,20 @@ contract CPAMM is ICPAMMHook {
      * @return reserve0 The reserve amount of token0
      * @return reserve1 The reserve amount of token1
      */
-    function getReserves(
-        PoolId poolId
-    ) external view override returns (uint256 reserve0, uint256 reserve1) {
+    function getReserves(PoolId poolId) external view override returns (uint256 reserve0, uint256 reserve1) {
         PoolState storage state = poolStates[poolId];
         return (state.reserve0, state.reserve1);
     }
 
     function getHooksCalls() external pure override returns (uint24) {
-        return
-            uint24(
-                Hooks.BEFORE_INITIALIZE_FLAG |
-                    Hooks.AFTER_INITIALIZE_FLAG |
-                    Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
-                    Hooks.AFTER_ADD_LIQUIDITY_FLAG |
-                    Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG |
-                    Hooks.AFTER_REMOVE_LIQUIDITY_FLAG |
-                    Hooks.BEFORE_SWAP_FLAG |
-                    Hooks.AFTER_SWAP_FLAG |
-                    Hooks.BEFORE_DONATE_FLAG |
-                    Hooks.AFTER_DONATE_FLAG
-            );
+        return uint24(
+            Hooks.BEFORE_INITIALIZE_FLAG | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG
+                | Hooks.AFTER_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG | Hooks.AFTER_REMOVE_LIQUIDITY_FLAG
+                | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.BEFORE_DONATE_FLAG | Hooks.AFTER_DONATE_FLAG
+        );
     }
 
-     /**
+    /**
      * @dev Calculates price impact for a swap
      * @param zeroForOne The direction of the swap
      * @param amountSpecified The amount being swapped
@@ -1134,34 +1025,32 @@ contract CPAMM is ICPAMMHook {
         int256 amountSpecified,
         uint160 sqrtPriceLimitX96,
         PoolId poolId
-    ) internal view returns (uint256) {
+    )
+        internal
+        view
+        returns (uint256)
+    {
         PoolState storage state = poolStates[poolId];
         uint256 currentPrice = state.sqrtPriceX96;
         uint256 limitPrice = sqrtPriceLimitX96;
 
         // Convert amountSpecified to absolute value for calculation
-        uint256 amount = uint256(
-            amountSpecified < 0 ? -amountSpecified : amountSpecified
-        );
+        uint256 amount = uint256(amountSpecified < 0 ? -amountSpecified : amountSpecified);
 
         // Calculate expected output based on current price and amount
-        uint256 expectedOutput = zeroForOne
-            ? (amount * currentPrice) / (1 << 96)
-            : (amount * (1 << 96)) / currentPrice;
+        uint256 expectedOutput = zeroForOne ? (amount * currentPrice) / (1 << 96) : (amount * (1 << 96)) / currentPrice;
 
         // Calculate actual output based on limit price
-        uint256 actualOutput = zeroForOne
-            ? (amount * limitPrice) / (1 << 96)
-            : (amount * (1 << 96)) / limitPrice;
+        uint256 actualOutput = zeroForOne ? (amount * limitPrice) / (1 << 96) : (amount * (1 << 96)) / limitPrice;
 
         // Calculate price impact as percentage (in basis points)
         uint256 impact = expectedOutput > actualOutput
-            ? ((expectedOutput - actualOutput) * 10000) / expectedOutput
-            : ((actualOutput - expectedOutput) * 10000) / expectedOutput;
+            ? ((expectedOutput - actualOutput) * 10_000) / expectedOutput
+            : ((actualOutput - expectedOutput) * 10_000) / expectedOutput;
 
         return impact;
     }
-    
+
     /**
      * @dev Blacklists or unblacklists a user.
      * @param user The address to be blacklisted or unblacklisted.
@@ -1214,17 +1103,17 @@ contract CPAMM is ICPAMMHook {
         BalanceDelta delta,
         uint256 reserve0,
         uint256 reserve1
-    ) internal pure returns (uint256) {
-        uint256 delta0 = uint256(
-            uint128(delta.amount0() >= 0 ? delta.amount0() : -delta.amount0())
-        );
-        uint256 delta1 = uint256(
-            uint128(delta.amount1() >= 0 ? delta.amount1() : -delta.amount1())
-        );
+    )
+        internal
+        pure
+        returns (uint256)
+    {
+        uint256 delta0 = uint256(uint128(delta.amount0() >= 0 ? delta.amount0() : -delta.amount0()));
+        uint256 delta1 = uint256(uint128(delta.amount1() >= 0 ? delta.amount1() : -delta.amount1()));
 
         // Calculate slippage as percentage of reserves (in basis points)
-        uint256 slippage0 = reserve0 > 0 ? (delta0 * 10000) / reserve0 : 0;
-        uint256 slippage1 = reserve1 > 0 ? (delta1 * 10000) / reserve1 : 0;
+        uint256 slippage0 = reserve0 > 0 ? (delta0 * 10_000) / reserve0 : 0;
+        uint256 slippage1 = reserve1 > 0 ? (delta1 * 10_000) / reserve1 : 0;
 
         // Return the larger slippage value
         return slippage0 > slippage1 ? slippage0 : slippage1;
@@ -1271,11 +1160,7 @@ contract CPAMM is ICPAMMHook {
      * @return reserve0 The amount of token0 in the pool.
      * @return reserve1 The amount of token1 in the pool.
      */
-    function getReserves()
-        public
-        view
-        returns (uint256 reserve0, uint256 reserve1)
-    {
+    function getReserves() public view returns (uint256 reserve0, uint256 reserve1) {
         // Retrieve the pool state for the current poolKey
         PoolId poolId = poolKey.toId();
         PoolState storage state = poolStates[poolId];
@@ -1292,11 +1177,7 @@ contract CPAMM is ICPAMMHook {
      * @return liquidity The amount of liquidity tokens minted
      * @notice Handles both initial and subsequent liquidity additions
      */
-    function mint(
-        uint256 amount0,
-        uint256 amount1,
-        address user
-    ) external returns (uint256 liquidity) {
+    function mint(uint256 amount0, uint256 amount1, address user) external returns (uint256 liquidity) {
         // Ensure the user is not the zero address
         require(user != address(0), "Invalid user address");
 
@@ -1330,7 +1211,7 @@ contract CPAMM is ICPAMMHook {
         return liquidity;
     }
 
-        /**
+    /**
      * @dev Burns liquidity from the pool and returns the corresponding token amounts to the user.
      *      Removes full-range liquidity using Uniswap V4's concentrated liquidity mechanics.
      * @param liquidity The amount of liquidity to burn.
@@ -1345,10 +1226,7 @@ contract CPAMM is ICPAMMHook {
      *
      * Emits a {Burn} event.
      */
-    function burn(
-        uint256 liquidity,
-        address user
-    ) external returns (uint256 amount0, uint256 amount1) {
+    function burn(uint256 liquidity, address user) external returns (uint256 amount0, uint256 amount1) {
         // Validate inputs
         require(liquidity > 0, "Cannot burn zero liquidity");
         require(user != address(0), "Invalid user address");
@@ -1359,7 +1237,7 @@ contract CPAMM is ICPAMMHook {
         require(factory.poolExists(poolId), "Pool does not exist");
 
         // Remove liquidity through pool manager
-        (BalanceDelta delta, ) = poolManager.modifyLiquidity(
+        (BalanceDelta delta,) = poolManager.modifyLiquidity(
             poolKey,
             IPoolManager.ModifyLiquidityParams({
                 tickLower: UniswapV4Utils.MIN_TICK,
@@ -1371,24 +1249,16 @@ contract CPAMM is ICPAMMHook {
         );
 
         // Convert delta amounts to uint256, handling negative values
-        amount0 = delta.amount0() < 0
-            ? uint256(-int256(delta.amount0()))
-            : uint256(int256(delta.amount0()));
-        amount1 = delta.amount1() < 0
-            ? uint256(-int256(delta.amount1()))
-            : uint256(int256(delta.amount1()));
+        amount0 = delta.amount0() < 0 ? uint256(-int256(delta.amount0())) : uint256(int256(delta.amount0()));
+        amount1 = delta.amount1() < 0 ? uint256(-int256(delta.amount1())) : uint256(int256(delta.amount1()));
 
         // Transfer tokens to user
-        if (amount0 > 0)
-            IERC20(Currency.unwrap(poolKey.currency0)).safeTransfer(
-                user,
-                amount0
-            );
-        if (amount1 > 0)
-            IERC20(Currency.unwrap(poolKey.currency1)).safeTransfer(
-                user,
-                amount1
-            );
+        if (amount0 > 0) {
+            IERC20(Currency.unwrap(poolKey.currency0)).safeTransfer(user, amount0);
+        }
+        if (amount1 > 0) {
+            IERC20(Currency.unwrap(poolKey.currency1)).safeTransfer(user, amount1);
+        }
 
         emit Burn(user, amount0, amount1, liquidity);
         return (amount0, amount1);
@@ -1402,11 +1272,7 @@ contract CPAMM is ICPAMMHook {
      * @return amountOut The amount of output tokens received
      * @notice Handles both exact input and exact output swaps
      */
-    function swap(
-        bool zeroForOne,
-        uint256 amountIn,
-        address recipient
-    ) external returns (uint256 amountOut) {
+    function swap(bool zeroForOne, uint256 amountIn, address recipient) external returns (uint256 amountOut) {
         // Validate inputs
         require(amountIn > 0, "Invalid amount in");
         require(recipient != address(0), "Invalid recipient");
@@ -1423,25 +1289,19 @@ contract CPAMM is ICPAMMHook {
                 zeroForOne: zeroForOne,
                 amountSpecified: int256(amountIn),
                 sqrtPriceLimitX96: 0 // No price limit
-            }),
+             }),
             "" // Empty bytes calldata
         );
 
         // Calculate amount out based on swap direction
         if (zeroForOne) {
-            amountOut = delta.amount1() < 0
-                ? uint256(-int256(delta.amount1()))
-                : uint256(int256(delta.amount1()));
+            amountOut = delta.amount1() < 0 ? uint256(-int256(delta.amount1())) : uint256(int256(delta.amount1()));
         } else {
-            amountOut = delta.amount0() < 0
-                ? uint256(-int256(delta.amount0()))
-                : uint256(int256(delta.amount0()));
+            amountOut = delta.amount0() < 0 ? uint256(-int256(delta.amount0())) : uint256(int256(delta.amount0()));
         }
 
         // Transfer tokens to recipient
-        address tokenOut = zeroForOne
-            ? Currency.unwrap(poolKey.currency1)
-            : Currency.unwrap(poolKey.currency0);
+        address tokenOut = zeroForOne ? Currency.unwrap(poolKey.currency1) : Currency.unwrap(poolKey.currency0);
         IERC20(tokenOut).safeTransfer(recipient, amountOut);
 
         emit Swap(
@@ -1463,13 +1323,9 @@ contract CPAMM is ICPAMMHook {
      * @return poolKey The derived PoolKey struct containing currency0, currency1, fee, and hook address.
      */
     function _getPoolKey() internal view returns (PoolKey memory) {
-        return
-            UniswapV4Utils.createPoolKey(
-                Currency.unwrap(currency0),
-                Currency.unwrap(currency1),
-                currentFee,
-                address(this)
-            );
+        return UniswapV4Utils.createPoolKey(
+            Currency.unwrap(currency0), Currency.unwrap(currency1), currentFee, address(this)
+        );
     }
 
     /**
@@ -1477,9 +1333,7 @@ contract CPAMM is ICPAMMHook {
      * @param poolId The unique identifier for the pool.
      * @return The current PoolState, including reserve balances and other metadata.
      */
-    function getPoolState(
-        PoolId poolId
-    ) external view returns (PoolState memory) {
+    function getPoolState(PoolId poolId) external view returns (PoolState memory) {
         return poolStates[poolId];
     }
 }

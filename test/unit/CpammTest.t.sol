@@ -1,30 +1,30 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {Test} from "forge-std/Test.sol";
-import {CPAMM} from "../../src/core/CPAMM.sol";
-import {CPAMMFactory} from "../../src/core/CPAMMFactory.sol";
-import {CPAMMRouter} from "../../src/periphery/CPAMMRouter.sol";
-import {CPAMMOracle} from "../../src/periphery/CPAMMOracle.sol";
-import {CPAMMGovernance} from "../../src/periphery/CPAMMGovernance.sol";
-import {CPAMMLiquidityProvider} from "../../src/periphery/CPAMMLiquidityProvider.sol";
-import {UniswapV4Pair} from "../../src/core/UniswapV4Pair.sol";
-import {UniswapV4Utils} from "../../src/lib/UniswapV4Utils.sol";
-import {CPAMMUtils} from "../../src/lib/CPAMMUtils.sol";
-import {MockERC20} from "../mocks/MockERC20.sol";
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
-import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
-import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
-import {CPAMMHelpers} from "../helpers/CPAMMHelpers.t.sol";
-import {ICPAMMFactory} from "../../src/Interfaces/ICPAMMFactory.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol"; // Import IERC20
-import {HookMiner} from "../../test/utils/HookMiner.sol";
-import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
-import {ICPAMMHook} from "../../src/Interfaces/ICPAMMHook.sol";
-import {MockPoolManager} from "../mocks/MockPoolManager.sol";
-import {ReserveTrackingHook} from "../../src/core/ReserveTrackingHook.sol";
+import { Test } from "forge-std/Test.sol";
+import { CPAMM } from "../../src/core/CPAMM.sol";
+import { CPAMMFactory } from "../../src/core/CPAMMFactory.sol";
+import { CPAMMRouter } from "../../src/periphery/CPAMMRouter.sol";
+import { CPAMMOracle } from "../../src/periphery/CPAMMOracle.sol";
+import { CPAMMGovernance } from "../../src/periphery/CPAMMGovernance.sol";
+import { CPAMMLiquidityProvider } from "../../src/periphery/CPAMMLiquidityProvider.sol";
+import { UniswapV4Pair } from "../../src/core/UniswapV4Pair.sol";
+import { UniswapV4Utils } from "../../src/lib/UniswapV4Utils.sol";
+import { CPAMMUtils } from "../../src/lib/CPAMMUtils.sol";
+import { MockERC20 } from "../mocks/MockERC20.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
+import { PoolId } from "@uniswap/v4-core/src/types/PoolId.sol";
+import { Currency } from "@uniswap/v4-core/src/types/Currency.sol";
+import { IHooks } from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import { CPAMMHelpers } from "../helpers/CPAMMHelpers.t.sol";
+import { ICPAMMFactory } from "../../src/Interfaces/ICPAMMFactory.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol"; // Import IERC20
+import { HookMiner } from "../../test/utils/HookMiner.sol";
+import { Hooks } from "@uniswap/v4-core/src/libraries/Hooks.sol";
+import { ICPAMMHook } from "../../src/Interfaces/ICPAMMHook.sol";
+import { MockPoolManager } from "../mocks/MockPoolManager.sol";
+import { ReserveTrackingHook } from "../../src/core/ReserveTrackingHook.sol";
 
 contract CPAMMTest is Test, CPAMMHelpers {
     using UniswapV4Utils for uint160;
@@ -58,7 +58,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
     // Test constants
     uint24 constant FEE = 3000; // 0.3%
     uint160 constant INITIAL_SQRT_PRICE = UniswapV4Utils.MIN_SQRT_RATIO + 1;
-    uint256 constant INITIAL_LIQUIDITY = 1000000 * 1e18;
+    uint256 constant INITIAL_LIQUIDITY = 1_000_000 * 1e18;
     uint256 constant SWAP_AMOUNT = 1000 * 1e18;
     uint256 constant MIN_LIQUIDITY = 1000;
 
@@ -71,12 +71,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
     address constant HOOK_ADDRESS = address(0x3);
 
     // Events to test
-    event PoolCreated(
-        address indexed token0,
-        address indexed token1,
-        uint24 fee,
-        address hook
-    );
+    event PoolCreated(address indexed token0, address indexed token1, uint24 fee, address hook);
 
     event LiquidityAdded(
         address indexed provider,
@@ -116,19 +111,14 @@ contract CPAMMTest is Test, CPAMMHelpers {
 
         // Define required hook permissions flags
         uint160 hookBits = uint160(
-            Hooks.AFTER_ADD_LIQUIDITY_FLAG |
-                Hooks.AFTER_REMOVE_LIQUIDITY_FLAG |
-                Hooks.AFTER_SWAP_FLAG |
-                Hooks.AFTER_DONATE_FLAG
+            Hooks.AFTER_ADD_LIQUIDITY_FLAG | Hooks.AFTER_REMOVE_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG
+                | Hooks.AFTER_DONATE_FLAG
         );
 
         // Get creation code and constructor arguments
         bytes memory creationCode = type(ReserveTrackingHook).creationCode;
         bytes memory constructorArgs = abi.encode(poolManager);
-        bytes memory deploymentData = abi.encodePacked(
-            creationCode,
-            constructorArgs
-        );
+        bytes memory deploymentData = abi.encodePacked(creationCode, constructorArgs);
 
         // Find salt and address using HookMiner
         (bytes32 salt, address hookAddress) = HookMiner.find(
@@ -141,15 +131,14 @@ contract CPAMMTest is Test, CPAMMHelpers {
         // Deploy hook with CREATE2
         address deployedHook;
         assembly {
-            deployedHook := create2(
-                0, // value (0 ETH)
-                add(deploymentData, 0x20), // offset
-                mload(deploymentData), // length
-                salt // salt
-            )
-            if iszero(deployedHook) {
-                revert(0, 0) // Revert if deployment fails
-            }
+            deployedHook :=
+                create2(
+                    0, // value (0 ETH)
+                    add(deploymentData, 0x20), // offset
+                    mload(deploymentData), // length
+                    salt // salt
+                )
+            if iszero(deployedHook) { revert(0, 0) } // Revert if deployment fails
         }
 
         // Assign deployed hook
@@ -174,18 +163,13 @@ contract CPAMMTest is Test, CPAMMHelpers {
 
         // Now patch the router so its `factory` pointer is correct
         router.setFactory(address(factory));
-      
+
         // Deploy tokens
         token0 = new MockERC20("Token0", "TK0", 18);
         token1 = new MockERC20("Token1", "TK1", 18);
 
         // Create pool
-        (PoolId pid, address hookAddr) = factory.createPool(
-            address(token0),
-            address(token1),
-            FEE,
-            INITIAL_SQRT_PRICE
-        );
+        (PoolId pid, address hookAddr) = factory.createPool(address(token0), address(token1), FEE, INITIAL_SQRT_PRICE);
 
         /*/ Remaining setup code
         PoolKey memory key = PoolKey({
@@ -202,37 +186,17 @@ contract CPAMMTest is Test, CPAMMHelpers {
         address pairAddress = factory.getPair(pid);
         pair = UniswapV4Pair(pairAddress);
 
-       // router = new CPAMMRouter(ICPAMMFactory(address(factory)), poolManager);
+        // router = new CPAMMRouter(ICPAMMFactory(address(factory)), poolManager);
         oracle = new CPAMMOracle(ICPAMMFactory(address(factory)));
-        
+
         // Allow our test’s `authorizedUser` to create proposals
         governance.setAuthorization(authorizedUser, true);
 
-        liquidityProvider = new CPAMMLiquidityProvider(
-            ICPAMMFactory(address(factory)),
-            poolManager
-        );
+        liquidityProvider = new CPAMMLiquidityProvider(ICPAMMFactory(address(factory)), poolManager);
     }
 
-    function computeCreate2Address(
-        uint256 salt,
-        bytes32 bytecodeHash
-    ) internal view returns (address) {
-        return
-            address(
-                uint160(
-                    uint256(
-                        keccak256(
-                            abi.encodePacked(
-                                bytes1(0xFF),
-                                address(this),
-                                salt,
-                                bytecodeHash
-                            )
-                        )
-                    )
-                )
-            );
+    function computeCreate2Address(uint256 salt, bytes32 bytecodeHash) internal view returns (address) {
+        return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xFF), address(this), salt, bytecodeHash)))));
     }
 
     // Test core pool operations
@@ -242,24 +206,12 @@ contract CPAMMTest is Test, CPAMMHelpers {
         address token2 = address(new MockERC20("Token2", "TK2", 18));
         address token3 = address(new MockERC20("Token3", "TK3", 18));
 
-        (PoolId poolId, address hookAddr) = _createTestPool(
-            factory,
-            token2,
-            token3,
-            FEE,
-            INITIAL_SQRT_PRICE
-        );
+        (PoolId poolId, address hookAddr) = _createTestPool(factory, token2, token3, FEE, INITIAL_SQRT_PRICE);
 
         // Validate pool creation results
         assertTrue(hookAddr != address(0), "Hook address should not be zero");
-        assertTrue(
-            factory.getHook(poolId) == hookAddr,
-            "Hook not registered in factory"
-        );
-        assertTrue(
-            factory.poolExists(poolId),
-            "Pool not registered in factory"
-        );
+        assertTrue(factory.getHook(poolId) == hookAddr, "Hook not registered in factory");
+        assertTrue(factory.poolExists(poolId), "Pool not registered in factory");
 
         vm.stopPrank();
     }
@@ -295,14 +247,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
 
         // Add liquidity through the router
         (uint256 amountA, uint256 amountB, uint256 liquidity) = router.addLiquidity(
-            address(token0),
-            address(token1),
-            INITIAL_LIQUIDITY,
-            INITIAL_LIQUIDITY,
-            0,
-            0,
-            user1,
-            block.timestamp + 1
+            address(token0), address(token1), INITIAL_LIQUIDITY, INITIAL_LIQUIDITY, 0, 0, user1, block.timestamp + 1
         );
 
         // Retrieve the correct pair address from the factory
@@ -332,15 +277,8 @@ contract CPAMMTest is Test, CPAMMHelpers {
         MockERC20(token1).approve(address(router), INITIAL_LIQUIDITY);
 
         // 3) Add liquidity via the Router, capturing the LP‑amount
-        (, , uint256 liquidity) = router.addLiquidity(
-            address(token0),
-            address(token1),
-            INITIAL_LIQUIDITY,
-            INITIAL_LIQUIDITY,
-            0,
-            0,
-            user1,
-            block.timestamp
+        (,, uint256 liquidity) = router.addLiquidity(
+            address(token0), address(token1), INITIAL_LIQUIDITY, INITIAL_LIQUIDITY, 0, 0, user1, block.timestamp
         );
 
         // 4) Seed the mock so removeLiquidity will return those tokens
@@ -350,24 +288,35 @@ contract CPAMMTest is Test, CPAMMHelpers {
 
         // 5) Approve router to pull LP tokens
         pair.approve(address(router), liquidity);
-     
+
         // Expect the full 7‑arg periphery event (3 indexed: provider, tokenA, tokenB)
         // so we pass true for the first three, then false for the non‑indexed.
         vm.expectEmit(
-            /* check provider */ true,
-            /* check tokenA   */ true,
-            /* check tokenB   */ true,
-            /* rest topics    */ false
+            /* check provider */
+            true,
+            /* check tokenA   */
+            true,
+            /* check tokenB   */
+            true,
+            /* rest topics    */
+            false
         );
 
         emit LiquidityRemoved(
-            /* provider */ user1,
-            /* tokenA   */ address(token0),
-            /* tokenB   */ address(token1),
-            /* amountA  */ INITIAL_LIQUIDITY,
-            /* amountB  */ INITIAL_LIQUIDITY,
-            /* liquidity*/ liquidity,
-            /* to       */ user1
+            /* provider */
+            user1,
+            /* tokenA   */
+            address(token0),
+            /* tokenB   */
+            address(token1),
+            /* amountA  */
+            INITIAL_LIQUIDITY,
+            /* amountB  */
+            INITIAL_LIQUIDITY,
+            /* liquidity*/
+            liquidity,
+            /* to       */
+            user1
         );
 
         // 6) Call periphery removeLiquidity
@@ -375,8 +324,10 @@ contract CPAMMTest is Test, CPAMMHelpers {
             address(token0),
             address(token1),
             liquidity,
-            /* amountAMin */ 0,
-            /* amountBMin */ 0,
+            /* amountAMin */
+            0,
+            /* amountBMin */
+            0,
             user1,
             block.timestamp + 1
         );
@@ -395,7 +346,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
 
         // Setup liquidity first through router
         vm.startPrank(user1);
-        
+
         // Mint tokens to user1
         token0.mint(user1, amount0);
         token1.mint(user1, amount1);
@@ -408,11 +359,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
         PoolId poolId = factory.getPoolId(address(token0), address(token1));
 
         // Set expected deltas in mock PoolManager
-        mockPoolManager.setNextModifyLiquidityCallerDelta(
-            poolId,
-            -int128(int256(amount0)),
-            -int128(int256(amount1))
-        );
+        mockPoolManager.setNextModifyLiquidityCallerDelta(poolId, -int128(int256(amount0)), -int128(int256(amount1)));
 
         // Add liquidity through router
         router.addLiquidity(
@@ -445,36 +392,26 @@ contract CPAMMTest is Test, CPAMMHelpers {
         mockPoolManager.setNextSwapDelta(
             poolId,
             int128(int256(expectedOut)), // token1 out (positive)
-            -int128(int256(swapAmount))  // token0 in (negative)
+            -int128(int256(swapAmount)) // token0 in (negative)
         );
 
         // Build path
         address[] memory path = new address[](2);
         path[0] = address(token0);
         path[1] = address(token1);
-        
+
         // Perform swap via router
-        uint256[] memory amounts = router.swapExactTokensForTokens(
-            swapAmount,
-            0,
-            path,
-            user2,
-            block.timestamp + 1
-        );
+        uint256[] memory amounts = router.swapExactTokensForTokens(swapAmount, 0, path, user2, block.timestamp + 1);
 
         // Verify results
         assertTrue(amounts[1] > 0, "Should get non-zero amount out");
-        assertEq(
-            token1.balanceOf(user2),
-            balanceBefore + amounts[1],
-            "Balance mismatch after swap"
-        );
+        assertEq(token1.balanceOf(user2), balanceBefore + amounts[1], "Balance mismatch after swap");
         assertEq(amounts[1], expectedOut, "Output amount mismatch");
 
         vm.stopPrank();
     }
 
-     // Helper function for swap
+    // Helper function for swap
     function _swap(
         address tokenIn,
         address tokenOut,
@@ -483,7 +420,10 @@ contract CPAMMTest is Test, CPAMMHelpers {
         uint256 amountIn,
         address recipient,
         uint256 expectedMinOut
-    ) internal returns (uint256 amountOut) {
+    )
+        internal
+        returns (uint256 amountOut)
+    {
         // Get reserves
         (uint256 reserveIn, uint256 reserveOut) = zeroForOne
             ? (token0.balanceOf(pair), token1.balanceOf(pair))
@@ -516,11 +456,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
 
         // tell the mock PoolManager to expect -L on both sides
         PoolId pid = factory.getPoolId(address(token0), address(token1));
-        mockPoolManager.setNextModifyLiquidityCallerDelta(
-            pid,
-            -int128(int256(L)),
-            -int128(int256(L))
-        );
+        mockPoolManager.setNextModifyLiquidityCallerDelta(pid, -int128(int256(L)), -int128(int256(L)));
 
         // give user1 some tokens & approve router
         token0.mint(user1, L);
@@ -529,20 +465,19 @@ contract CPAMMTest is Test, CPAMMHelpers {
         token1.approve(address(router), L);
 
         // actually add the liquidity
-        (, , uint256 mintedLiquidity) = router.addLiquidity(
+        (,, uint256 mintedLiquidity) = router.addLiquidity(
             address(token0),
             address(token1),
-            L,    // amountADesired
-            L,    // amountBDesired
-            0,    // amountAMin
-            0,    // amountBMin
+            L, // amountADesired
+            L, // amountBDesired
+            0, // amountAMin
+            0, // amountBMin
             user1,
             block.timestamp + 1
         );
         assertGt(mintedLiquidity, 0, "liquidity minted");
 
         vm.stopPrank();
-
 
         // 2) --- now seed & call a swap via router as user2 ---
         vm.startPrank(user2);
@@ -554,9 +489,9 @@ contract CPAMMTest is Test, CPAMMHelpers {
         mockPoolManager.setNextSwapDelta(
             pid,
             int128(int256(expectedOut)), // amount0 delta (currency0 = token1, output)
-            -int128(int256(M))             // amount1 delta (currency1 = token0, input)
+            -int128(int256(M)) // amount1 delta (currency1 = token0, input)
         );
-     
+
         // give user2 some token0 & approve router
         token0.mint(user2, M);
         token0.approve(address(router), M);
@@ -573,17 +508,17 @@ contract CPAMMTest is Test, CPAMMHelpers {
         vm.expectEmit(true, true, true, true);
         emit Swap(
             user2,
-            0,          // amount0In (currency0 = token1)
-            M,          // amount1In (currency1 = token0)
+            0, // amount0In (currency0 = token1)
+            M, // amount1In (currency1 = token0)
             expectedOut, // amount0Out (currency0 = token1)
-            0,          // amount1Out (currency1 = token0)
+            0, // amount1Out (currency1 = token0)
             user2
         );
 
         // do the swap
         uint256[] memory amounts = router.swapExactTokensForTokens(
-            M,           // amountIn
-            0,           // amountOutMin
+            M, // amountIn
+            0, // amountOutMin
             path,
             user2,
             block.timestamp + 1
@@ -595,11 +530,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
         assertEq(amounts[1], expectedOut);
 
         // user2's token1 balance should have grown
-        assertEq(
-            token1.balanceOf(user2),
-            before + expectedOut,
-            "user2 got token1"
-        );
+        assertEq(token1.balanceOf(user2), before + expectedOut, "user2 got token1");
 
         vm.stopPrank();
     }
@@ -608,19 +539,13 @@ contract CPAMMTest is Test, CPAMMHelpers {
     function testUtilsValidation() public {
         // Test fee validation
         uint24 validFee = 3000; // 0.3%
-        uint24 invalidFee = 150000; // 15%
+        uint24 invalidFee = 150_000; // 15%
 
         // Valid fee should pass
         assertEq(UniswapV4Utils.validateFee(validFee), validFee);
 
         // Invalid fee should revert
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                UniswapV4Utils.InvalidFee.selector,
-                invalidFee,
-                UniswapV4Utils.MAX_FEE
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(UniswapV4Utils.InvalidFee.selector, invalidFee, UniswapV4Utils.MAX_FEE));
         UniswapV4Utils.validateFee(invalidFee);
 
         // Test token validation
@@ -628,18 +553,11 @@ contract CPAMMTest is Test, CPAMMHelpers {
         address TOKEN_B = address(0x2);
         address HOOK_ADDRESS = address(0x3);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                UniswapV4Utils.InvalidTokens.selector,
-                TOKEN_A,
-                TOKEN_A
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(UniswapV4Utils.InvalidTokens.selector, TOKEN_A, TOKEN_A));
         UniswapV4Utils.createPoolKey(TOKEN_A, TOKEN_A, validFee, HOOK_ADDRESS);
 
         // Test sqrt price validation
-        uint160 validPrice = (UniswapV4Utils.MIN_SQRT_RATIO +
-            UniswapV4Utils.MAX_SQRT_RATIO) / 2;
+        uint160 validPrice = (UniswapV4Utils.MIN_SQRT_RATIO + UniswapV4Utils.MAX_SQRT_RATIO) / 2;
         uint160 invalidPriceLow = UniswapV4Utils.MIN_SQRT_RATIO - 1;
         uint160 invalidPriceHigh = UniswapV4Utils.MAX_SQRT_RATIO + 1;
 
@@ -712,9 +630,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
         uint256 proposalId = governance.createProposal(poolId, newFee, delay);
 
         // Verify proposal details
-        CPAMMGovernance.Proposal memory proposal = governance.getProposal(
-            proposalId
-        );
+        CPAMMGovernance.Proposal memory proposal = governance.getProposal(proposalId);
         uint256 id = proposal.id;
         address proposer = proposal.proposer;
         PoolId pId = proposal.poolId;
@@ -726,10 +642,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
         assertEq(id, proposalId);
         assertEq(proposer, authorizedUser);
         // Since PoolId is a user-defined value type, we can compare them directly
-        assertTrue(
-            PoolId.unwrap(pId) == PoolId.unwrap(poolId),
-            "Pool IDs do not match"
-        );
+        assertTrue(PoolId.unwrap(pId) == PoolId.unwrap(poolId), "Pool IDs do not match");
         assertEq(fee, newFee);
         assertEq(pDelay, delay);
         assertEq(uint8(state), uint8(CPAMMGovernance.ProposalState.Active));
@@ -737,11 +650,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
 
     function testProposalExecution() public {
         // Setup
-        PoolId poolId = createMockPool(
-            factory,
-            3000,
-            UniswapV4Utils.MIN_SQRT_RATIO
-        );
+        PoolId poolId = createMockPool(factory, 3000, UniswapV4Utils.MIN_SQRT_RATIO);
         uint24 newFee = 5000;
         uint256 delay = 1 days;
 
@@ -749,9 +658,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
         vm.startPrank(authorizedUser);
         uint256 proposalId = governance.createProposal(poolId, newFee, delay);
 
-        CPAMMGovernance.Proposal memory proposal = governance.getProposal(
-            proposalId
-        );
+        CPAMMGovernance.Proposal memory proposal = governance.getProposal(proposalId);
 
         // Advance time past delay
         vm.warp(block.timestamp + proposal.delay + 1);
@@ -767,11 +674,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
 
     function testProposalCancellation() public {
         // Setup
-        PoolId poolId = createMockPool(
-            factory,
-            3000,
-            UniswapV4Utils.MIN_SQRT_RATIO
-        );
+        PoolId poolId = createMockPool(factory, 3000, UniswapV4Utils.MIN_SQRT_RATIO);
         uint24 newFee = 5000;
         uint256 delay = 1 days;
 
@@ -784,56 +687,28 @@ contract CPAMMTest is Test, CPAMMHelpers {
         governance.cancelProposal(proposalId);
 
         // Verify cancelled state
-        CPAMMGovernance.Proposal memory proposal = governance.getProposal(
-            proposalId
-        );
+        CPAMMGovernance.Proposal memory proposal = governance.getProposal(proposalId);
         CPAMMGovernance.ProposalState state = proposal.state;
         assertEq(uint8(state), uint8(CPAMMGovernance.ProposalState.Cancelled));
     }
 
     function testPriceObservation() public {
         // Create pool and add initial liquidity
-        (PoolId poolId, ) = createPool(
-            factory,
-            address(token0),
-            address(token1),
-            FEE,
-            INITIAL_SQRT_PRICE
-        );
+        (PoolId poolId,) = createPool(factory, address(token0), address(token1), FEE, INITIAL_SQRT_PRICE);
 
-        addLiquidity(
-            MockERC20(token0),
-            MockERC20(token1),
-            router,
-            poolId,
-            1e18,
-            1e18
-        );
+        addLiquidity(MockERC20(token0), MockERC20(token1), router, poolId, 1e18, 1e18);
 
         // Record initial price using updatePrice
         uint256 price = oracle.updatePrice(poolId);
 
         // Get the latest observation
-        uint256 observationKey = (block.timestamp / oracle.PERIOD()) *
-            oracle.PERIOD();
-        (
-            uint256 timestamp,
-            uint256 storedPrice,
-            uint256 reserve0,
-            uint256 reserve1
-        ) = oracle.observations(poolId, observationKey);
+        uint256 observationKey = (block.timestamp / oracle.PERIOD()) * oracle.PERIOD();
+        (uint256 timestamp, uint256 storedPrice, uint256 reserve0, uint256 reserve1) =
+            oracle.observations(poolId, observationKey);
 
         // Verify price and timestamp
-        assertEq(
-            storedPrice,
-            price,
-            "Stored price should match recorded price"
-        );
-        assertEq(
-            timestamp,
-            block.timestamp,
-            "Timestamp should be current block"
-        );
+        assertEq(storedPrice, price, "Stored price should match recorded price");
+        assertEq(timestamp, block.timestamp, "Timestamp should be current block");
     }
 
     function testConsultPrice() public {
@@ -874,76 +749,47 @@ contract CPAMMTest is Test, CPAMMHelpers {
         // We must cast properly from uint256 → int128.
         int128 delta0 = -int128(int256(amount0));
         int128 delta1 = -int128(int256(amount1));
-        mockPoolManager.setNextModifyLiquidityCallerDelta(
-            poolId,
-            delta0,
-            delta1
-        );
+        mockPoolManager.setNextModifyLiquidityCallerDelta(poolId, delta0, delta1);
 
         // Add liquidity to the existing pool
-        addLiquidity(
-            MockERC20(token0),
-            MockERC20(token1),
-            router,
-            poolId,
-            amount0,
-            amount1
-        );
+        addLiquidity(MockERC20(token0), MockERC20(token1), router, poolId, amount0, amount1);
 
         // Record the price observation
         oracle.updatePrice(poolId);
 
         // Get the reserves from the oracle (which now correctly reads from ReserveTrackingHook)
-        (uint256 reserve0, uint256 reserve1, uint256 timestamp) = oracle
-            .getReserves(poolId);
+        (uint256 reserve0, uint256 reserve1, uint256 timestamp) = oracle.getReserves(poolId);
 
         // Verify that the reserves match the added liquidity amounts
         assertEq(reserve0, amount0, "Reserve0 should match added liquidity");
         assertEq(reserve1, amount1, "Reserve1 should match added liquidity");
-        assertEq(
-            timestamp,
-            block.timestamp,
-            "Timestamp should be current block"
-        );
+        assertEq(timestamp, block.timestamp, "Timestamp should be current block");
     }
 
-   function testRevertOnStalePrice() public {
+    function testRevertOnStalePrice() public {
         // 1) Create pool and add initial liquidity
-        (PoolId poolId, ) = createPool(
-            factory,
-            address(token0),
-            address(token1),
-            FEE,
-            INITIAL_SQRT_PRICE
-        );
+        (PoolId poolId,) = createPool(factory, address(token0), address(token1), FEE, INITIAL_SQRT_PRICE);
 
-        addLiquidity(
-            MockERC20(token0),
-            MockERC20(token1),
-            router,
-            poolId,
-            1e18,
-            1e18
-        );
+        addLiquidity(MockERC20(token0), MockERC20(token1), router, poolId, 1e18, 1e18);
 
         // 2) Record a fresh observation - occurs at timestamp 1
         oracle.updatePrice(poolId);
-        
+
         // 3) Advance time beyond PERIOD (3600 seconds)
         vm.warp(block.timestamp + oracle.PERIOD() + 1); // Now at 3602
-        
+
         // 4) Get PERIOD value before expectRevert
         uint256 period = oracle.PERIOD();
-        
+
         // 5) Expect revert with correct parameters
         vm.expectRevert(
             abi.encodeWithSelector(
                 CPAMMOracle.StalePrice.selector,
-                1,  // Correct observation timestamp
+                1, // Correct observation timestamp
                 block.timestamp
             )
         );
-        
+
         // 6) Make the consult call
         oracle.consult(poolId, period);
     }
@@ -965,24 +811,19 @@ contract CPAMMTest is Test, CPAMMHelpers {
         PoolId poolId = factory.getPoolId(address(token0), address(token1));
 
         // Set expected deltas in mock PoolManager
-        mockPoolManager.setNextModifyLiquidityCallerDelta(
-            poolId,
-            -int128(int256(amount0)),
-            -int128(int256(amount1))
-        );
+        mockPoolManager.setNextModifyLiquidityCallerDelta(poolId, -int128(int256(amount0)), -int128(int256(amount1)));
 
         // Add liquidity and capture returned values
-        (uint256 amountA, uint256 amountB, uint256 liquidity) = router
-            .addLiquidity(
-                address(token0),
-                address(token1),
-                amount0,
-                amount1,
-                0, // amountAMin
-                0, // amountBMin
-                address(this),
-                block.timestamp
-            );
+        (uint256 amountA, uint256 amountB, uint256 liquidity) = router.addLiquidity(
+            address(token0),
+            address(token1),
+            amount0,
+            amount1,
+            0, // amountAMin
+            0, // amountBMin
+            address(this),
+            block.timestamp
+        );
 
         // Verify results
         assertGt(amountA, 0, "Amount A should be greater than 0");
@@ -1007,17 +848,16 @@ contract CPAMMTest is Test, CPAMMHelpers {
         int128 d1 = -int128(int256(amount1));
         mockPoolManager.setNextModifyLiquidityCallerDelta(pid, d0, d1);
 
-        (uint256 addedA, uint256 addedB, uint256 liquidity) = liquidityProvider
-            .addLiquidity(
-                address(token0),
-                address(token1),
-                amount0,
-                amount1,
-                0, // amountAMin
-                0, // amountBMin
-                address(this),
-                block.timestamp
-            );
+        (uint256 addedA, uint256 addedB, uint256 liquidity) = liquidityProvider.addLiquidity(
+            address(token0),
+            address(token1),
+            amount0,
+            amount1,
+            0, // amountAMin
+            0, // amountBMin
+            address(this),
+            block.timestamp
+        );
 
         // Now remove liquidity
         // Approve liquidityProvider to spend LP tokens
@@ -1025,42 +865,29 @@ contract CPAMMTest is Test, CPAMMHelpers {
 
         // seed the mock so removeLiquidity sees the right positive deltas
         // (pool “gives back” amount0 and amount1 when you burn your LP)
-        mockPoolManager.setNextModifyLiquidityCallerDelta(
-         pid,
-         int128(int256(amount0)),
-         int128(int256(amount1))
-        );
+        mockPoolManager.setNextModifyLiquidityCallerDelta(pid, int128(int256(amount0)), int128(int256(amount1)));
 
         // fund the mockPoolManager so its safeTransfer() will succeed
         token0.mint(address(mockPoolManager), amount0);
         token1.mint(address(mockPoolManager), amount1);
 
-        (uint256 removedA, uint256 removedB) = liquidityProvider
-            .removeLiquidity(
-                address(token0),
-                address(token1),
-                liquidity,
-                (addedA * 90) / 100, // 90% of original amount as minimum
-                (addedB * 90) / 100,
-                address(this),
-                block.timestamp + 1
-            );
+        (uint256 removedA, uint256 removedB) = liquidityProvider.removeLiquidity(
+            address(token0),
+            address(token1),
+            liquidity,
+            (addedA * 90) / 100, // 90% of original amount as minimum
+            (addedB * 90) / 100,
+            address(this),
+            block.timestamp + 1
+        );
 
         // Verify results
         assertGt(removedA, 0, "Removed amount A should be greater than 0");
         assertGt(removedB, 0, "Removed amount B should be greater than 0");
-        assertLe(
-            removedA,
-            addedA,
-            "Removed amount A should not exceed added amount"
-        );
-        assertLe(
-            removedB,
-            addedB,
-            "Removed amount B should not exceed added amount"
-        );
+        assertLe(removedA, addedA, "Removed amount A should not exceed added amount");
+        assertLe(removedB, addedB, "Removed amount B should not exceed added amount");
     }
- 
+
     function testSwapExactTokensForTokens() public {
         // Setup initial liquidity
         deal(address(token0), user, 100e18);
@@ -1074,19 +901,10 @@ contract CPAMMTest is Test, CPAMMHelpers {
         mockPoolManager.setNextModifyLiquidityCallerDelta(
             poolId,
             -int128(int256(50e18)), // token0 delta
-            -int128(int256(50e18))  // token1 delta
+            -int128(int256(50e18)) // token1 delta
         );
 
-        router.addLiquidity(
-            address(token0),
-            address(token1),
-            50e18,
-            50e18,
-            45e18,
-            45e18,
-            user,
-            block.timestamp + 1
-        );
+        router.addLiquidity(address(token0), address(token1), 50e18, 50e18, 45e18, 45e18, user, block.timestamp + 1);
 
         // Prepare swap
         address[] memory path = new address[](2);
@@ -1101,7 +919,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
         mockPoolManager.setNextSwapDelta(
             poolId,
             int128(int256(expectedOut)), // token1 out
-            -int128(int256(amountIn))    // token0 in
+            -int128(int256(amountIn)) // token0 in
         );
 
         // Execute swap
@@ -1129,10 +947,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
         factory.registerHook(hookAddress);
 
         // Verify that the factory accepts it
-        assertTrue(
-            factory.isHookValid(hookAddress),
-            "Hook should be registered"
-        );
+        assertTrue(factory.isHookValid(hookAddress), "Hook should be registered");
 
         vm.stopPrank();
     }
@@ -1143,36 +958,25 @@ contract CPAMMTest is Test, CPAMMHelpers {
         uint256 amount1 = 1;
 
         vm.startPrank(user1);
-        
+
         // Mint tokens directly to user
         token0.mint(user1, amount0);
         token1.mint(user1, amount1);
-        
+
         // Approve liquidity provider to spend tokens
         token0.approve(address(liquidityProvider), amount0);
         token1.approve(address(liquidityProvider), amount1);
-        
+
         // Expect revert when adding liquidity
         vm.expectRevert(CPAMMLiquidityProvider.InsufficientLiquidityMinted.selector);
         liquidityProvider.addLiquidity(
-            address(token0),
-            address(token1),
-            amount0,
-            amount1,
-            0,
-            0,
-            user1,
-            block.timestamp + 1
+            address(token0), address(token1), amount0, amount1, 0, 0, user1, block.timestamp + 1
         );
         vm.stopPrank();
     }
 
     function test_RevertWhen_UnauthorizedUserCreatesProposal() public {
-        PoolId poolId = createMockPool(
-            factory,
-            3000,
-            UniswapV4Utils.MIN_SQRT_RATIO
-        );
+        PoolId poolId = createMockPool(factory, 3000, UniswapV4Utils.MIN_SQRT_RATIO);
         uint24 newFee = 5000;
         uint256 delay = 1 days;
 
@@ -1182,12 +986,8 @@ contract CPAMMTest is Test, CPAMMHelpers {
     }
 
     function test_RevertWhen_ProposalWithInvalidFee() public {
-        PoolId poolId = createMockPool(
-            factory,
-            3000,
-            UniswapV4Utils.MIN_SQRT_RATIO
-        );
-        uint24 newFee = 150000;
+        PoolId poolId = createMockPool(factory, 3000, UniswapV4Utils.MIN_SQRT_RATIO);
+        uint24 newFee = 150_000;
         uint256 delay = 1 days;
 
         vm.expectRevert(); // Add specific error if available
@@ -1196,11 +996,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
     }
 
     function test_RevertWhen_ProposalExceedsMaxDelay() public {
-        PoolId poolId = createMockPool(
-            factory,
-            3000,
-            UniswapV4Utils.MIN_SQRT_RATIO
-        );
+        PoolId poolId = createMockPool(factory, 3000, UniswapV4Utils.MIN_SQRT_RATIO);
         uint24 newFee = 5000;
         uint256 delay = 31 days;
 
@@ -1211,68 +1007,33 @@ contract CPAMMTest is Test, CPAMMHelpers {
 
     function test_RevertWhen_AddLiquidityWithExpiredDeadline() public {
         (address token0, address token1) = setupTokens(user);
-        createPool(
-            factory,
-            address(token0),
-            address(token1),
-            FEE,
-            INITIAL_SQRT_PRICE
-        );
+        createPool(factory, address(token0), address(token1), FEE, INITIAL_SQRT_PRICE);
 
         vm.startPrank(user);
         MockERC20(token0).approve(address(liquidityProvider), 1000e18);
         MockERC20(token1).approve(address(liquidityProvider), 1000e18);
 
         uint256 deadline = block.timestamp - 1;
-        vm.expectRevert(
-            abi.encodeWithSelector(CPAMMLiquidityProvider.DeadlineExpired.selector, deadline)
-        );
-        liquidityProvider.addLiquidity(
-            token0,
-            token1,
-            1000e18,
-            1000e18,
-            900e18,
-            900e18,
-            user,
-            deadline
-        );
+        vm.expectRevert(abi.encodeWithSelector(CPAMMLiquidityProvider.DeadlineExpired.selector, deadline));
+        liquidityProvider.addLiquidity(token0, token1, 1000e18, 1000e18, 900e18, 900e18, user, deadline);
         vm.stopPrank();
     }
 
     function test_RevertWhen_AddLiquidityWithoutApproval() public {
         (address token0, address token1) = setupTokens(user);
-        createPool(
-            factory,
-            address(token0),
-            address(token1),
-            FEE,
-            INITIAL_SQRT_PRICE
-        );
+        createPool(factory, address(token0), address(token1), FEE, INITIAL_SQRT_PRICE);
 
         vm.startPrank(user);
-        
+
         // Get liquidity provider address
         address lp = address(liquidityProvider);
-        
+
         vm.expectRevert(
             abi.encodeWithSelector(
-                bytes4(keccak256("ERC20InsufficientAllowance(address,uint256,uint256)")),
-                lp,
-                0,
-                1000e18
+                bytes4(keccak256("ERC20InsufficientAllowance(address,uint256,uint256)")), lp, 0, 1000e18
             )
         );
-        liquidityProvider.addLiquidity(
-            token0,
-            token1,
-            1000e18,
-            1000e18,
-            900e18,
-            900e18,
-            user,
-            block.timestamp + 1
-        );
+        liquidityProvider.addLiquidity(token0, token1, 1000e18, 1000e18, 900e18, 900e18, user, block.timestamp + 1);
         vm.stopPrank();
     }
 
@@ -1282,13 +1043,7 @@ contract CPAMMTest is Test, CPAMMHelpers {
         InvalidPath[0] = address(token0);
 
         vm.expectRevert(CPAMMRouter.InvalidPath.selector);
-        router.swapExactTokensForTokens(
-            1e18,
-            0,
-            InvalidPath,
-            user,
-            block.timestamp + 1
-        );
+        router.swapExactTokensForTokens(1e18, 0, InvalidPath, user, block.timestamp + 1);
         vm.stopPrank();
     }
 

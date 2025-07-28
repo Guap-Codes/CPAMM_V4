@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
-import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
-import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import {BeforeSwapDelta} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
+import { PoolId } from "@uniswap/v4-core/src/types/PoolId.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { IHooks } from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import { BalanceDelta } from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import { Hooks } from "@uniswap/v4-core/src/libraries/Hooks.sol";
+import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { BeforeSwapDelta } from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 
 /**
  * @title ICPAMMHook
@@ -20,22 +20,14 @@ interface ICPAMMHook is IHooks {
     // Events
     event SlippageVerified(int256 amountSpecified, uint160 sqrtPriceLimitX96);
     event KValueUpdated(uint256 oldK, uint256 newK);
-    event ReservesUpdated(
-        PoolId indexed poolId,
-        uint256 reserve0,
-        uint256 reserve1
-    );
+    event ReservesUpdated(PoolId indexed poolId, uint256 reserve0, uint256 reserve1);
     event FeeUpdated(PoolId indexed poolId, uint24 newFee);
     event PriceUpdate(PoolId indexed poolId, uint256 price, uint256 timestamp);
 
     // Shared errors
     error PoolDoesNotExist(PoolId poolId);
     error InvalidPoolManager(address poolManager);
-    error InsufficientLiquidity(
-        uint256 reserve0,
-        uint256 reserve1,
-        uint256 minLiquidity
-    );
+    error InsufficientLiquidity(uint256 reserve0, uint256 reserve1, uint256 minLiquidity);
     error InvalidK(uint256 kLast, uint256 newK);
     error InvalidFee(uint256 fee, uint256 maxFee);
 
@@ -52,7 +44,10 @@ interface ICPAMMHook is IHooks {
         address sender,
         PoolKey calldata key,
         uint160 sqrtPriceX96
-    ) external override returns (bytes4);
+    )
+        external
+        override
+        returns (bytes4);
 
     /**
      * @notice Hook called after pool initialization
@@ -67,7 +62,10 @@ interface ICPAMMHook is IHooks {
         PoolKey calldata key,
         uint160 sqrtPriceX96,
         int24 tick
-    ) external override returns (bytes4);
+    )
+        external
+        override
+        returns (bytes4);
 
     /**
      * @notice Hook called before modifying a position
@@ -82,7 +80,9 @@ interface ICPAMMHook is IHooks {
         PoolKey calldata key,
         IPoolManager.ModifyLiquidityParams calldata params,
         bytes calldata hookData
-    ) external returns (bytes4);
+    )
+        external
+        returns (bytes4);
 
     /**
      * @notice Hook called after modifying a position
@@ -99,7 +99,9 @@ interface ICPAMMHook is IHooks {
         IPoolManager.ModifyLiquidityParams calldata params,
         BalanceDelta delta,
         bytes calldata hookData
-    ) external returns (bytes4);
+    )
+        external
+        returns (bytes4);
 
     /**
      * @notice Hook called before a swap
@@ -116,7 +118,9 @@ interface ICPAMMHook is IHooks {
         PoolKey calldata key,
         IPoolManager.SwapParams calldata params,
         bytes calldata hookData
-    ) external returns (bytes4, BeforeSwapDelta, uint24);
+    )
+        external
+        returns (bytes4, BeforeSwapDelta, uint24);
 
     /**
      * @notice Hook called after a swap
@@ -134,7 +138,9 @@ interface ICPAMMHook is IHooks {
         IPoolManager.SwapParams calldata params,
         BalanceDelta delta,
         bytes calldata hookData
-    ) external returns (bytes4, int128);
+    )
+        external
+        returns (bytes4, int128);
 
     /**
      * @notice Hook called before a donation
@@ -151,7 +157,10 @@ interface ICPAMMHook is IHooks {
         uint256 amount0,
         uint256 amount1,
         bytes calldata hookData
-    ) external override returns (bytes4);
+    )
+        external
+        override
+        returns (bytes4);
 
     /**
      * @notice Hook called after a donation
@@ -168,7 +177,10 @@ interface ICPAMMHook is IHooks {
         uint256 amount0,
         uint256 amount1,
         bytes calldata hookData
-    ) external override returns (bytes4);
+    )
+        external
+        override
+        returns (bytes4);
 
     // Liquidity-specific hooks
 
@@ -185,7 +197,9 @@ interface ICPAMMHook is IHooks {
         PoolKey calldata key,
         IPoolManager.ModifyLiquidityParams calldata params,
         bytes calldata hookData
-    ) external returns (bytes4);
+    )
+        external
+        returns (bytes4);
 
     /**
      * @notice Hook called after adding liquidity
@@ -205,7 +219,9 @@ interface ICPAMMHook is IHooks {
         BalanceDelta delta,
         BalanceDelta feesAccrued,
         bytes calldata hookData
-    ) external returns (bytes4, BalanceDelta);
+    )
+        external
+        returns (bytes4, BalanceDelta);
 
     /**
      * @notice Hook called before removing liquidity
@@ -220,7 +236,9 @@ interface ICPAMMHook is IHooks {
         PoolKey calldata key,
         IPoolManager.ModifyLiquidityParams calldata params,
         bytes calldata hookData
-    ) external returns (bytes4);
+    )
+        external
+        returns (bytes4);
 
     /**
      * @notice Hook called after removing liquidity
@@ -240,7 +258,9 @@ interface ICPAMMHook is IHooks {
         BalanceDelta delta,
         BalanceDelta feesAccrued,
         bytes calldata hookData
-    ) external returns (bytes4, BalanceDelta);
+    )
+        external
+        returns (bytes4, BalanceDelta);
 
     // View functions
 
@@ -250,19 +270,15 @@ interface ICPAMMHook is IHooks {
      * @return price The current price
      * @return timestamp The timestamp of the last price update
      */
-    function getPrice(
-        PoolId poolId
-    ) external view returns (uint256 price, uint256 timestamp);
-    
+    function getPrice(PoolId poolId) external view returns (uint256 price, uint256 timestamp);
+
     /**
      * @notice Get the current reserves for a pool
      * @param poolId The ID of the pool
      * @return reserve0 The reserve amount of token0
      * @return reserve1 The reserve amount of token1
      */
-    function getReserves(
-        PoolId poolId
-    ) external view returns (uint256 reserve0, uint256 reserve1);
+    function getReserves(PoolId poolId) external view returns (uint256 reserve0, uint256 reserve1);
 
     /**
      * @notice Get the bitmap of implemented hooks

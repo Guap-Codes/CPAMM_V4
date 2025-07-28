@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {Test} from "forge-std/Test.sol";
-import {CPAMM} from "../../src/core/CPAMM.sol";
-import {CPAMMFactory} from "../../src/core/CPAMMFactory.sol";
-import {CPAMMRouter} from "../../src/periphery/CPAMMRouter.sol";
-import {MockERC20} from "../mocks/MockERC20.sol";
-import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {MockPoolManager} from "../mocks/MockPoolManager.sol";
+import { Test } from "forge-std/Test.sol";
+import { CPAMM } from "../../src/core/CPAMM.sol";
+import { CPAMMFactory } from "../../src/core/CPAMMFactory.sol";
+import { CPAMMRouter } from "../../src/periphery/CPAMMRouter.sol";
+import { MockERC20 } from "../mocks/MockERC20.sol";
+import { PoolId } from "@uniswap/v4-core/src/types/PoolId.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { MockPoolManager } from "../mocks/MockPoolManager.sol";
 
 abstract contract CPAMMHelpers is Test {
     function _createTestPool(
@@ -17,7 +17,10 @@ abstract contract CPAMMHelpers is Test {
         address tokenB,
         uint24 fee,
         uint160 sqrtPriceX96
-    ) internal returns (PoolId, address) {
+    )
+        internal
+        returns (PoolId, address)
+    {
         return factory.createPool(tokenA, tokenB, fee, sqrtPriceX96);
     }
 
@@ -28,7 +31,10 @@ abstract contract CPAMMHelpers is Test {
         uint256 amount0,
         uint256 amount1,
         address user
-    ) internal returns (uint256 liquidity) {
+    )
+        internal
+        returns (uint256 liquidity)
+    {
         // Transfer tokens to the user
         MockERC20(token0).mint(user, amount0);
         MockERC20(token1).mint(user, amount1);
@@ -49,11 +55,14 @@ abstract contract CPAMMHelpers is Test {
         address pair,
         uint256 liquidity,
         address user
-    ) internal returns (uint256 amount0, uint256 amount1) {
+    )
+        internal
+        returns (uint256 amount0, uint256 amount1)
+    {
         return CPAMM(pair).burn(liquidity, user);
     }
 
-   /* function _swap(
+    /* function _swap(
         address token0,
         address token1,
         address pair,
@@ -80,10 +89,7 @@ abstract contract CPAMMHelpers is Test {
         return amountOut;
     }*/
 
-   
-    function setupTokens(
-        address user
-    ) internal returns (address token0, address token1) {
+    function setupTokens(address user) internal returns (address token0, address token1) {
         // Deploy new mock tokens
         MockERC20 tokenA = new MockERC20("Test Token A", "TKNA", 18);
         MockERC20 tokenB = new MockERC20("Test Token B", "TKNB", 18);
@@ -108,13 +114,11 @@ abstract contract CPAMMHelpers is Test {
         address token1,
         uint24 fee,
         uint160 initialSqrtPrice
-    ) internal returns (PoolId poolId, address hookAddr) {
-        (poolId, hookAddr) = factory.createPool(
-            token0,
-            token1,
-            fee,
-            initialSqrtPrice
-        );
+    )
+        internal
+        returns (PoolId poolId, address hookAddr)
+    {
+        (poolId, hookAddr) = factory.createPool(token0, token1, fee, initialSqrtPrice);
 
         // Verify pool creation
         require(hookAddr != address(0), "Pool creation failed");
@@ -154,7 +158,9 @@ abstract contract CPAMMHelpers is Test {
         PoolId poolId,
         uint256 amount0,
         uint256 amount1
-    ) internal {
+    )
+        internal
+    {
         // Mint & approve
         token0.mint(address(this), amount0);
         token1.mint(address(this), amount1);
@@ -181,15 +187,11 @@ abstract contract CPAMMHelpers is Test {
         );
     }
 
-    function createMockPool(
-        CPAMMFactory factory,
-        uint24 fee,
-        uint160 sqrtPrice
-    ) internal returns (PoolId) {
+    function createMockPool(CPAMMFactory factory, uint24 fee, uint160 sqrtPrice) internal returns (PoolId) {
         address token0 = address(1);
         address token1 = address(2);
 
-        (PoolId poolId, ) = factory.createPool(token0, token1, fee, sqrtPrice);
+        (PoolId poolId,) = factory.createPool(token0, token1, fee, sqrtPrice);
         return poolId;
     }
 
@@ -199,13 +201,11 @@ abstract contract CPAMMHelpers is Test {
         address tokenB,
         uint24 fee,
         uint160 sqrtPriceX96
-    ) internal returns (PoolId poolId, address hookAddr) {
-        (poolId, hookAddr) = factory.createPool(
-            tokenA,
-            tokenB,
-            fee,
-            sqrtPriceX96
-        );
+    )
+        internal
+        returns (PoolId poolId, address hookAddr)
+    {
+        (poolId, hookAddr) = factory.createPool(tokenA, tokenB, fee, sqrtPriceX96);
 
         // Verify the hook address is correctly registered
         require(factory.getHook(poolId) == hookAddr, "Hook not registered");

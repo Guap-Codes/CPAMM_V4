@@ -1,27 +1,32 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
-import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
-import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
-import {CPAMMUtils} from "./CPAMMUtils.sol";
+import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
+import { Currency } from "@uniswap/v4-core/src/types/Currency.sol";
+import { IHooks } from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import { Hooks } from "@uniswap/v4-core/src/libraries/Hooks.sol";
+import { CPAMMUtils } from "./CPAMMUtils.sol";
 
 library UniswapV4Utils {
     // Constants
-    uint160 internal constant MIN_SQRT_RATIO = 4295128739;
-    uint160 internal constant MAX_SQRT_RATIO = 1461446703485210103287273052203988822378723970342;
+    uint160 internal constant MIN_SQRT_RATIO = 4_295_128_739;
+    uint160 internal constant MAX_SQRT_RATIO = 1_461_446_703_485_210_103_287_273_052_203_988_822_378_723_970_342;
     int24 internal constant DEFAULT_TICK_SPACING = 60;
-    int24 internal constant MIN_TICK = -887272;
-    int24 internal constant MAX_TICK = 887272;
-    uint24 internal constant MAX_FEE = 100000; // 10% max fee
+    int24 internal constant MIN_TICK = -887_272;
+    int24 internal constant MAX_TICK = 887_272;
+    uint24 internal constant MAX_FEE = 100_000; // 10% max fee
 
     // Errors
     error InvalidSqrtPrice(uint160 provided, uint160 min, uint160 max);
     error InvalidTokens(address tokenA, address tokenB);
     error InvalidFee(uint24 fee, uint24 maxFee);
 
-    function createPoolKey(address token0, address token1, uint24 fee, address hook)
+    function createPoolKey(
+        address token0,
+        address token1,
+        uint24 fee,
+        address hook
+    )
         public
         pure
         returns (PoolKey memory)
@@ -84,10 +89,10 @@ library UniswapV4Utils {
         if (_key.currency0 == _key.currency1) return false;
         if (address(_key.hooks) == address(0)) return false;
         if (_key.fee > MAX_FEE) return false;
-        
+
         // Validate tick spacing
         if (_key.tickSpacing <= 0 || _key.tickSpacing > MAX_TICK - MIN_TICK) return false;
-        
+
         return true;
     }
 }

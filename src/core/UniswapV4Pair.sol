@@ -1,33 +1,33 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {Currency, CurrencyLibrary} from "@uniswap/v4-core/src/types/Currency.sol";
-import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
-import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {ICPAMMFactory} from "../Interfaces/ICPAMMFactory.sol";
-import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
-import {UniswapV4Utils} from "../lib/UniswapV4Utils.sol";
-import {CPAMMUtils} from "../lib/CPAMMUtils.sol";
-import {Pool} from "@uniswap/v4-core/src/libraries/Pool.sol";
-import {Slot0} from "@uniswap/v4-core/src/types/Slot0.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
+import { Currency, CurrencyLibrary } from "@uniswap/v4-core/src/types/Currency.sol";
+import { PoolId, PoolIdLibrary } from "@uniswap/v4-core/src/types/PoolId.sol";
+import { BalanceDelta } from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ICPAMMFactory } from "../Interfaces/ICPAMMFactory.sol";
+import { FixedPointMathLib } from "solmate/src/utils/FixedPointMathLib.sol";
+import { UniswapV4Utils } from "../lib/UniswapV4Utils.sol";
+import { CPAMMUtils } from "../lib/CPAMMUtils.sol";
+import { Pool } from "@uniswap/v4-core/src/libraries/Pool.sol";
+import { Slot0 } from "@uniswap/v4-core/src/types/Slot0.sol";
 
 /**
  * @title UniswapV4Pair
  * @notice ERC20 token representing liquidity provider shares in a Uniswap V4 pool
  * @dev Implements core AMM functionality including mint/burn of LP tokens and swaps
- * 
+ *
  * Key Features:
  * - ERC20 compliant LP token representing pool shares
  * - Mint/burn functionality for liquidity management
  * - Swap functionality between token pairs
  * - Reentrancy protection for all state-changing operations
  * - Router-controlled LP token minting/burning
- * 
+ *
  * Security Considerations:
  * - All state-changing functions are non-reentrant
  * - Router-only access for mintLP/burnLP functions
@@ -51,13 +51,13 @@ contract UniswapV4Pair is ReentrancyGuard, IERC20 {
     PoolId public immutable poolId; // Unique identifier for the pool
     IERC20 public immutable token0; // First token in the pair
     IERC20 public immutable token1; // Second token in the pair
-    address public immutable factory;   // Factory contract that created this pool
+    address public immutable factory; // Factory contract that created this pool
     address public immutable router; // Router contract with mint/burn privileges
 
     // ERC20 state
     mapping(address => uint256) private _balances; // LP token balances
-    uint256 private _totalSupply;   // Total LP tokens in circulation
-    mapping(address => mapping(address => uint256)) private _allowances; // Token allowances   
+    uint256 private _totalSupply; // Total LP tokens in circulation
+    mapping(address => mapping(address => uint256)) private _allowances; // Token allowances
 
     // Custom errors
     error InvalidFactory(address factory); // Invalid factory address
@@ -72,12 +72,7 @@ contract UniswapV4Pair is ReentrancyGuard, IERC20 {
 
     // Events
     event Mint(address indexed sender, uint256 amount0, uint256 amount1);
-    event Burn(
-        address indexed sender,
-        uint256 amount0,
-        uint256 amount1,
-        address indexed to
-    );
+    event Burn(address indexed sender, uint256 amount0, uint256 amount1, address indexed to);
     event Swap(
         address indexed sender,
         uint256 amount0In,
@@ -88,12 +83,7 @@ contract UniswapV4Pair is ReentrancyGuard, IERC20 {
     );
     event Sync(uint256 reserve0, uint256 reserve1);
     event PoolInitialized(PoolId indexed poolId, uint160 sqrtPriceX96);
-    event LiquidityAdded(
-        address indexed user,
-        uint256 amount0,
-        uint256 amount1,
-        uint256 liquidity
-    );
+    event LiquidityAdded(address indexed user, uint256 amount0, uint256 amount1, uint256 liquidity);
     event LiquidityChanged(PoolId indexed poolId, int256 liquidityDelta);
 
     /**
@@ -104,18 +94,13 @@ contract UniswapV4Pair is ReentrancyGuard, IERC20 {
      * @param _router Router contract address
      * @dev Validates factory and hook addresses during construction
      */
-    constructor(
-        IPoolManager _poolManager,
-        PoolKey memory _poolKey,
-        address _factory,
-        address _router 
-    ) {
+    constructor(IPoolManager _poolManager, PoolKey memory _poolKey, address _factory, address _router) {
         if (_factory == address(0)) revert InvalidFactory(_factory);
         if (!ICPAMMFactory(_factory).isHookValid(address(_poolKey.hooks))) {
             revert InvalidHook(address(_poolKey.hooks));
         }
         factory = _factory;
-        router = _router; 
+        router = _router;
         poolManager = _poolManager;
         poolKey = _poolKey;
         poolId = _poolKey.toId();
@@ -128,8 +113,9 @@ contract UniswapV4Pair is ReentrancyGuard, IERC20 {
      * @param targetPoolId Pool ID to validate
      */
     modifier whenPoolValid(PoolId targetPoolId) {
-        if (!CPAMMUtils.validatePool(factory, targetPoolId))
+        if (!CPAMMUtils.validatePool(factory, targetPoolId)) {
             revert InvalidPool(targetPoolId);
+        }
         _;
     }
 
@@ -141,23 +127,19 @@ contract UniswapV4Pair is ReentrancyGuard, IERC20 {
      * @return liquidity Amount of LP tokens minted
      * @dev Non-reentrant and validates pool state
      */
-    function mint(
-        address to
-    ) external nonReentrant whenPoolValid(poolId) returns (uint256 liquidity) {
+    function mint(address to) external nonReentrant whenPoolValid(poolId) returns (uint256 liquidity) {
         if (to == address(0)) revert InvalidRecipient(to);
 
         // 1) fetch current reserves
         (uint256 reserve0_, uint256 reserve1_) = getReserves();
 
         // 2) call into the poolManager (we assume router already sent tokens in)
-        (BalanceDelta delta, ) = poolManager.modifyLiquidity(
+        (BalanceDelta delta,) = poolManager.modifyLiquidity(
             poolKey,
             IPoolManager.ModifyLiquidityParams({
                 tickLower: UniswapV4Utils.MIN_TICK,
                 tickUpper: UniswapV4Utils.MAX_TICK,
-                liquidityDelta: int256(
-                    CPAMMUtils.calculateInitialLiquidity(reserve0_, reserve1_)
-                ),
+                liquidityDelta: int256(CPAMMUtils.calculateInitialLiquidity(reserve0_, reserve1_)),
                 salt: bytes32(0)
             }),
             ""
@@ -211,22 +193,15 @@ contract UniswapV4Pair is ReentrancyGuard, IERC20 {
      * @param to Address to receive the output tokens
      * @dev Non-reentrant and validates swap amounts
      */
-    function swap(
-        uint256 amount0Out,
-        uint256 amount1Out,
-        address to
-    ) external nonReentrant {
-        if (amount0Out == 0 && amount1Out == 0)
+    function swap(uint256 amount0Out, uint256 amount1Out, address to) external nonReentrant {
+        if (amount0Out == 0 && amount1Out == 0) {
             revert InvalidSwapAmount(amount0Out, amount1Out);
+        }
         if (to == address(0)) revert InvalidRecipient(to);
 
         (uint256 reserve0, uint256 reserve1) = getReserves();
         if (amount0Out >= reserve0 || amount1Out >= reserve1) {
-            revert InsufficientLiquidity(
-                reserve0,
-                reserve1,
-                CPAMMUtils.MIN_LIQUIDITY
-            );
+            revert InsufficientLiquidity(reserve0, reserve1, CPAMMUtils.MIN_LIQUIDITY);
         }
 
         // Perform swap through pool manager
@@ -234,11 +209,9 @@ contract UniswapV4Pair is ReentrancyGuard, IERC20 {
             poolKey,
             IPoolManager.SwapParams({
                 zeroForOne: amount0Out > 0,
-                amountSpecified: amount0Out > 0
-                    ? int256(amount0Out)
-                    : int256(amount1Out),
+                amountSpecified: amount0Out > 0 ? int256(amount0Out) : int256(amount1Out),
                 sqrtPriceLimitX96: 0 // No price limit
-            }),
+             }),
             "" // Empty bytes calldata
         );
 
@@ -259,11 +232,7 @@ contract UniswapV4Pair is ReentrancyGuard, IERC20 {
      * @return reserve0 Reserve amount of token0
      * @return reserve1 Reserve amount of token1
      */
-    function getReserves()
-        public
-        view
-        returns (uint256 reserve0, uint256 reserve1)
-    {
+    function getReserves() public view returns (uint256 reserve0, uint256 reserve1) {
         bytes32 slot = keccak256(abi.encode(poolKey, "Slot0"));
 
         // First get the bytes32 value
@@ -324,11 +293,7 @@ contract UniswapV4Pair is ReentrancyGuard, IERC20 {
      * @param amount Amount to transfer
      * @return success Always returns true
      */
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool) {
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         _spendAllowance(from, msg.sender, amount);
         _transfer(from, to, amount);
         return true;
@@ -340,10 +305,7 @@ contract UniswapV4Pair is ReentrancyGuard, IERC20 {
      * @param spender Approved spender
      * @return allowance Approved amount
      */
-    function allowance(
-        address owner,
-        address spender
-    ) external view returns (uint256) {
+    function allowance(address owner, address spender) external view returns (uint256) {
         return _allowances[owner][spender];
     }
 
@@ -405,17 +367,10 @@ contract UniswapV4Pair is ReentrancyGuard, IERC20 {
      * @param spender Approved spender
      * @param amount Amount to spend
      */
-    function _spendAllowance(
-        address owner,
-        address spender,
-        uint256 amount
-    ) internal {
+    function _spendAllowance(address owner, address spender, uint256 amount) internal {
         uint256 currentAllowance = _allowances[owner][spender];
         if (currentAllowance != type(uint256).max) {
-            require(
-                currentAllowance >= amount,
-                "ERC20: insufficient allowance"
-            );
+            require(currentAllowance >= amount, "ERC20: insufficient allowance");
             unchecked {
                 _approve(owner, spender, currentAllowance - amount);
             }

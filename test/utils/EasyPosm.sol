@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.21;
 
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {BalanceDelta, toBalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
-import {Currency, CurrencyLibrary} from "@uniswap/v4-core/src/types/Currency.sol";
-import {IPositionManager} from "v4-periphery/src/interfaces/IPositionManager.sol";
-import {Actions} from "v4-periphery/src/libraries/Actions.sol";
-import {SafeCast} from "@uniswap/v4-core/src/libraries/SafeCast.sol";
-import {PositionInfo, PositionInfoLibrary} from "v4-periphery/src/libraries/PositionInfoLibrary.sol";
+import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
+import { BalanceDelta, toBalanceDelta } from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import { Currency, CurrencyLibrary } from "@uniswap/v4-core/src/types/Currency.sol";
+import { IPositionManager } from "v4-periphery/src/interfaces/IPositionManager.sol";
+import { Actions } from "v4-periphery/src/libraries/Actions.sol";
+import { SafeCast } from "@uniswap/v4-core/src/libraries/SafeCast.sol";
+import { PositionInfo, PositionInfoLibrary } from "v4-periphery/src/libraries/PositionInfoLibrary.sol";
 
 /// @title Easy Position Manager
 /// @notice A library for abstracting Position Manager calldata
@@ -38,7 +38,10 @@ library EasyPosm {
         address recipient,
         uint256 deadline,
         bytes memory hookData
-    ) internal returns (uint256 tokenId, BalanceDelta delta) {
+    )
+        internal
+        returns (uint256 tokenId, BalanceDelta delta)
+    {
         (Currency currency0, Currency currency1) = (poolKey.currency0, poolKey.currency1);
 
         MintData memory mintData = MintData({
@@ -53,7 +56,7 @@ library EasyPosm {
         // Mint Liquidity
         tokenId = posm.nextTokenId();
         uint256 valueToPass = currency0.isAddressZero() ? amount0Max : 0;
-        posm.modifyLiquidities{value: valueToPass}(
+        posm.modifyLiquidities{ value: valueToPass }(
             abi.encode(abi.encodePacked(uint8(Actions.MINT_POSITION), uint8(Actions.SETTLE_PAIR)), mintData.params),
             deadline
         );
@@ -72,7 +75,10 @@ library EasyPosm {
         uint256 amount1Max,
         uint256 deadline,
         bytes memory hookData
-    ) internal returns (BalanceDelta delta) {
+    )
+        internal
+        returns (BalanceDelta delta)
+    {
         (Currency currency0, Currency currency1) = getCurrencies(posm, tokenId);
 
         bytes[] memory params = new bytes[](3);
@@ -84,7 +90,7 @@ library EasyPosm {
         uint256 balance1Before = currency1.balanceOf(address(this));
 
         uint256 valueToPass = currency0.isAddressZero() ? amount0Max : 0;
-        posm.modifyLiquidities{value: valueToPass}(
+        posm.modifyLiquidities{ value: valueToPass }(
             abi.encode(
                 abi.encodePacked(
                     uint8(Actions.INCREASE_LIQUIDITY), uint8(Actions.CLOSE_CURRENCY), uint8(Actions.CLOSE_CURRENCY)
@@ -109,7 +115,10 @@ library EasyPosm {
         address recipient,
         uint256 deadline,
         bytes memory hookData
-    ) internal returns (BalanceDelta delta) {
+    )
+        internal
+        returns (BalanceDelta delta)
+    {
         (Currency currency0, Currency currency1) = getCurrencies(posm, tokenId);
 
         bytes[] memory params = new bytes[](2);
@@ -137,7 +146,10 @@ library EasyPosm {
         address recipient,
         uint256 deadline,
         bytes memory hookData
-    ) internal returns (BalanceDelta delta) {
+    )
+        internal
+        returns (BalanceDelta delta)
+    {
         (Currency currency0, Currency currency1) = getCurrencies(posm, tokenId);
 
         bytes[] memory params = new bytes[](2);
@@ -166,7 +178,10 @@ library EasyPosm {
         address recipient,
         uint256 deadline,
         bytes memory hookData
-    ) internal returns (BalanceDelta delta) {
+    )
+        internal
+        returns (BalanceDelta delta)
+    {
         (Currency currency0, Currency currency1) = getCurrencies(posm, tokenId);
 
         bytes[] memory params = new bytes[](2);
@@ -186,7 +201,10 @@ library EasyPosm {
         );
     }
 
-    function getCurrencies(IPositionManager posm, uint256 tokenId)
+    function getCurrencies(
+        IPositionManager posm,
+        uint256 tokenId
+    )
         internal
         view
         returns (Currency currency0, Currency currency1)

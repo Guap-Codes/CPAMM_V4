@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ICPAMMFactory} from "../Interfaces/ICPAMMFactory.sol";
-import {ICPAMMHook} from "../Interfaces/ICPAMMHook.sol";
-import {CPAMMUtils} from "../lib/CPAMMUtils.sol";
+import { PoolId } from "@uniswap/v4-core/src/types/PoolId.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ICPAMMFactory } from "../Interfaces/ICPAMMFactory.sol";
+import { ICPAMMHook } from "../Interfaces/ICPAMMHook.sol";
+import { CPAMMUtils } from "../lib/CPAMMUtils.sol";
 
 contract CPAMMOracle {
     using CPAMMUtils for uint256;
@@ -36,17 +36,8 @@ contract CPAMMOracle {
     mapping(PoolId => uint256) public lastObservation;
 
     // Events
-    event PriceObservation(
-        PoolId indexed poolId,
-        uint256 price,
-        uint256 timestamp
-    );
-    event ReservesObservation(
-        PoolId indexed poolId,
-        uint256 reserve0,
-        uint256 reserve1,
-        uint256 timestamp
-    );
+    event PriceObservation(PoolId indexed poolId, uint256 price, uint256 timestamp);
+    event ReservesObservation(PoolId indexed poolId, uint256 reserve0, uint256 reserve1, uint256 timestamp);
 
     // Errors
     error PoolDoesNotExist(PoolId poolId);
@@ -78,12 +69,8 @@ contract CPAMMOracle {
         uint256 nowTs = block.timestamp;
         uint256 bucket = (nowTs / PERIOD) * PERIOD;
 
-        observations[poolId][bucket] = Observation({
-            timestamp: nowTs,
-            price: currentPrice,
-            reserve0: reserve0_,
-            reserve1: reserve1_
-        });
+        observations[poolId][bucket] =
+            Observation({ timestamp: nowTs, price: currentPrice, reserve0: reserve0_, reserve1: reserve1_ });
 
         // lastObservation now stores the bucket key, not the raw timestamp
         lastObservation[poolId] = bucket;
@@ -100,25 +87,21 @@ contract CPAMMOracle {
      * @param secondsAgo How far back to look for the price (must be <= PERIOD)
      * @return price The historical price (token1 per token0, scaled by 1e18)
      */
-    function consult(
-        PoolId poolId,
-        uint256 secondsAgo
-    ) external view returns (uint256 price) {
+    function consult(PoolId poolId, uint256 secondsAgo) external view returns (uint256 price) {
         if (!factory.poolExists(poolId)) revert PoolDoesNotExist(poolId);
         if (secondsAgo == 0 || secondsAgo > PERIOD) {
             revert InvalidPeriod(secondsAgo, PERIOD);
         }
 
+        // 3) Staleness: pull the **real** timestamp out of the latest bucket’s Observation
+        uint256 lastBucket = lastObservation[poolId];
+        Observation memory lastObs = observations[poolId][lastBucket];
 
-       // 3) Staleness: pull the **real** timestamp out of the latest bucket’s Observation
-       uint256 lastBucket = lastObservation[poolId];
-       Observation memory lastObs = observations[poolId][lastBucket];
+        if (lastObs.timestamp == 0) revert NoObservations(poolId);
 
-       if (lastObs.timestamp == 0) revert NoObservations(poolId);
-
-       if (block.timestamp - lastObs.timestamp > secondsAgo) {
-           revert StalePrice(lastObs.timestamp, block.timestamp);
-       }
+        if (block.timestamp - lastObs.timestamp > secondsAgo) {
+            revert StalePrice(lastObs.timestamp, block.timestamp);
+        }
 
         uint256 target = block.timestamp - secondsAgo;
         uint256 bucket = (target / PERIOD) * PERIOD;
@@ -143,13 +126,7 @@ contract CPAMMOracle {
      * @return reserve1_ Reserve amount of token1
      * @return ts Timestamp of the observation (current block time if falling back to hook)
      */
-    function getReserves(
-        PoolId poolId
-    )
-        external
-        view
-        returns (uint256 reserve0_, uint256 reserve1_, uint256 ts)
-    {
+    function getReserves(PoolId poolId) external view returns (uint256 reserve0_, uint256 reserve1_, uint256 ts) {
         if (!factory.poolExists(poolId)) revert PoolDoesNotExist(poolId);
 
         uint256 lastBucket = lastObservation[poolId];
@@ -161,7 +138,7 @@ contract CPAMMOracle {
             (reserve0_, reserve1_) = hook.getReserves(poolId);
             return (reserve0_, reserve1_, block.timestamp);
         }
-      
+
         return (obs.reserve0, obs.reserve1, obs.timestamp);
     }
 }

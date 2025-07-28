@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {Currency, CurrencyLibrary} from "@uniswap/v4-core/src/types/Currency.sol";
-import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {UniswapV4Utils} from "../lib/UniswapV4Utils.sol";
-import {CPAMMUtils} from "../lib/CPAMMUtils.sol";
-import {ICPAMMFactory} from "../Interfaces/ICPAMMFactory.sol";
-import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
-import {ReserveTrackingHook} from "../core/ReserveTrackingHook.sol";
-import {UniswapV4Pair} from "../core/UniswapV4Pair.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { IHooks } from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
+import { Currency, CurrencyLibrary } from "@uniswap/v4-core/src/types/Currency.sol";
+import { PoolId, PoolIdLibrary } from "@uniswap/v4-core/src/types/PoolId.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { UniswapV4Utils } from "../lib/UniswapV4Utils.sol";
+import { CPAMMUtils } from "../lib/CPAMMUtils.sol";
+import { ICPAMMFactory } from "../Interfaces/ICPAMMFactory.sol";
+import { Hooks } from "@uniswap/v4-core/src/libraries/Hooks.sol";
+import { ReserveTrackingHook } from "../core/ReserveTrackingHook.sol";
+import { UniswapV4Pair } from "../core/UniswapV4Pair.sol";
 
 /**
  * @title CPAMMFactory
@@ -26,7 +26,7 @@ import {UniswapV4Pair} from "../core/UniswapV4Pair.sol";
  * - Deploy LP token contracts (`UniswapV4Pair`) per pool
  * - Validate hook and pool configurations
  * - Pause/unpause factory in emergencies
- * 
+ *
  * Security Considerations:
  * - ReentrancyGuard protects against nested call exploits
  * - Only the owner can pause or unpause operations
@@ -45,13 +45,13 @@ contract CPAMMFactory is ICPAMMFactory, Ownable, Pausable, ReentrancyGuard {
     // Constants
     /// @dev Default LP fee (30 bps)
     uint16 public constant DEFAULT_FEE = 3000; // 0.3% default fee
-    
+
     /// @dev Default tick spacing for pools
     int24 public constant DEFAULT_TICK_SPACING = UniswapV4Utils.DEFAULT_TICK_SPACING;
-    
+
     /// @dev Default slippage tolerance (0.5%)
     uint256 public constant DEFAULT_SLIPPAGE = 50; // 0.5%
-    
+
     /// @dev Default protocol fee (5 bps)
     uint24 public constant DEFAULT_PROTOCOL_FEE = 500; // 0.05%
 
@@ -66,19 +66,19 @@ contract CPAMMFactory is ICPAMMFactory, Ownable, Pausable, ReentrancyGuard {
     // State variables
     /// @notice The Uniswap V4 PoolManager responsible for pool deployment
     IPoolManager public immutable poolManager;
-    
+
     /// @notice Governance address with protocol configuration privileges
     address public immutable governance;
-    
+
     /// @notice The reserve-tracking hook used for CPAMM
-    ReserveTrackingHook public immutable reserveHook; 
-    
+    ReserveTrackingHook public immutable reserveHook;
+
     /// @notice Reference to the router contract
     address public immutable router;
 
     /// @dev Mapping from PoolId to pool existence flag
-    mapping(PoolId => bool) public poolExistsMap;    
-    
+    mapping(PoolId => bool) public poolExistsMap;
+
     /// @dev Maps token pairs to their PoolId (sorted order)
     mapping(address => mapping(address => PoolId)) private tokenPairToPoolId;
 
@@ -102,14 +102,15 @@ contract CPAMMFactory is ICPAMMFactory, Ownable, Pausable, ReentrancyGuard {
         address _reserveHook,
         address _owner,
         address _router // New: Accept router address
-    ) Ownable(_owner) {
+    )
+        Ownable(_owner)
+    {
         poolManager = _poolManager;
         governance = _governance;
         reserveHook = ReserveTrackingHook(_reserveHook);
         router = _router; // New: Initialize router
     }
 
-    
     /**
      * @dev Registers a hook contract for use with pools
      * @param hook Address of the hook contract to register
@@ -119,10 +120,7 @@ contract CPAMMFactory is ICPAMMFactory, Ownable, Pausable, ReentrancyGuard {
      */
     function registerHook(address hook) external override onlyOwner {
         require(hook != address(0), "CPAMMFactory: zero hook");
-        require(
-            hook == address(reserveHook),
-            "CPAMMFactory: only reserveHook allowed"
-        );
+        require(hook == address(reserveHook), "CPAMMFactory: only reserveHook allowed");
         emit HookRegistered(hook, true);
     }
 
@@ -155,10 +153,7 @@ contract CPAMMFactory is ICPAMMFactory, Ownable, Pausable, ReentrancyGuard {
         if (fee > CPAMMUtils.MAX_FEE) revert InvalidFee(fee);
 
         // Sort tokens
-        (address token0, address token1) = UniswapV4Utils.sortTokens(
-            tokenA,
-            tokenB
-        );
+        (address token0, address token1) = UniswapV4Utils.sortTokens(tokenA, tokenB);
 
         // Use the pre-deployed ReserveTrackingHook
         hookAddr = address(reserveHook);
@@ -236,20 +231,15 @@ contract CPAMMFactory is ICPAMMFactory, Ownable, Pausable, ReentrancyGuard {
      * @notice Tokens are automatically sorted by address
      * @inheritdoc ICPAMMFactory
      */
-    function getPair(
-        address tokenA,
-        address tokenB
-    ) public view override returns (address) {
+    function getPair(address tokenA, address tokenB) public view override returns (address) {
         (address t0, address t1) = UniswapV4Utils.sortTokens(tokenA, tokenB);
-        PoolKey memory pk = poolKeysMap[
-            PoolKey({
-                currency0: Currency.wrap(t0),
-                currency1: Currency.wrap(t1),
-                fee: DEFAULT_FEE,
-                tickSpacing: DEFAULT_TICK_SPACING,
-                hooks: IHooks(address(reserveHook))
-            }).toId()
-        ];
+        PoolKey memory pk = poolKeysMap[PoolKey({
+            currency0: Currency.wrap(t0),
+            currency1: Currency.wrap(t1),
+            fee: DEFAULT_FEE,
+            tickSpacing: DEFAULT_TICK_SPACING,
+            hooks: IHooks(address(reserveHook))
+        }).toId()];
         return _pairs[pk.toId()];
     }
 
@@ -261,10 +251,7 @@ contract CPAMMFactory is ICPAMMFactory, Ownable, Pausable, ReentrancyGuard {
      * @notice Tokens must be passed in sorted order
      * @inheritdoc ICPAMMFactory
      */
-    function getPoolId(
-        address token0,
-        address token1
-    ) external view override returns (PoolId) {
+    function getPoolId(address token0, address token1) external view override returns (PoolId) {
         (address t0, address t1) = UniswapV4Utils.sortTokens(token0, token1);
         return tokenPairToPoolId[t0][t1];
     }
@@ -278,9 +265,7 @@ contract CPAMMFactory is ICPAMMFactory, Ownable, Pausable, ReentrancyGuard {
      * @return hook The hook address
      * @inheritdoc ICPAMMFactory
      */
-    function getPoolKey(
-        PoolId pid
-    )
+    function getPoolKey(PoolId pid)
         external
         view
         override
@@ -288,12 +273,7 @@ contract CPAMMFactory is ICPAMMFactory, Ownable, Pausable, ReentrancyGuard {
     {
         require(poolExistsMap[pid], "CPAMMFactory: no pool");
         PoolKey memory k = poolKeysMap[pid];
-        return (
-            Currency.unwrap(k.currency0),
-            Currency.unwrap(k.currency1),
-            k.fee,
-            address(k.hooks)
-        );
+        return (Currency.unwrap(k.currency0), Currency.unwrap(k.currency1), k.fee, address(k.hooks));
     }
 
     /**

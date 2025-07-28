@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
-import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
-import {BalanceDelta, BalanceDeltaLibrary} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
-import {BeforeSwapDelta} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
-import {SafeCast} from "@uniswap/v4-core/src/libraries/SafeCast.sol";
+import { IHooks } from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import { Hooks } from "@uniswap/v4-core/src/libraries/Hooks.sol";
+import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
+import { PoolId, PoolIdLibrary } from "@uniswap/v4-core/src/types/PoolId.sol";
+import { BalanceDelta, BalanceDeltaLibrary } from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import { BeforeSwapDelta } from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { Currency } from "@uniswap/v4-core/src/types/Currency.sol";
+import { SafeCast } from "@uniswap/v4-core/src/libraries/SafeCast.sol";
 
 /**
  * @title ReserveTrackingHook
  * @notice A Uniswap V4 hook contract that tracks pool reserves for CPAMM functionality
  * @dev Implements IHooks interface to track liquidity changes, swaps, and donations
- * 
+ *
  * Key Features:
  * - Tracks token reserves for each pool
  * - Updates reserves after liquidity modifications, swaps, and donations
  * - Governance-controlled fee updates
  * - Provides reserve information to external contracts
- * 
+ *
  * Security Considerations:
  * - Only the PoolManager can call hook functions
  * - Only governance can update fees
@@ -33,7 +33,7 @@ contract ReserveTrackingHook is IHooks {
 
     /// @notice The PoolManager contract
     IPoolManager public immutable poolManager;
-    
+
     /// @notice The only address allowed to change fees
     address public governance;
 
@@ -72,7 +72,7 @@ contract ReserveTrackingHook is IHooks {
      * @param _poolManager The address of the PoolManager contract
      */
     constructor(IPoolManager _poolManager) {
-        poolManager = _poolManager; 
+        poolManager = _poolManager;
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -110,7 +110,6 @@ contract ReserveTrackingHook is IHooks {
         return poolFee[pid];
     }
 
-
     // ─────────────────────────────────────────────────────────────────────────────
     // IHooks implementation
     // ─────────────────────────────────────────────────────────────────────────────
@@ -120,28 +119,23 @@ contract ReserveTrackingHook is IHooks {
      * @return permissions The hook permissions structure
      * @dev Indicates which hook callbacks this contract implements
      */
-    function getHookPermissions()
-        external
-        pure
-        returns (Hooks.Permissions memory)
-    {
-        return
-            Hooks.Permissions({
-                beforeInitialize: false,
-                afterInitialize: false,
-                beforeAddLiquidity: false,
-                afterAddLiquidity: true,
-                beforeRemoveLiquidity: false,
-                afterRemoveLiquidity: true,
-                beforeSwap: false,
-                afterSwap: true,
-                beforeDonate: false,
-                afterDonate: true,
-                beforeSwapReturnDelta: false,
-                afterSwapReturnDelta: false,
-                afterAddLiquidityReturnDelta: false,
-                afterRemoveLiquidityReturnDelta: false
-            });
+    function getHookPermissions() external pure returns (Hooks.Permissions memory) {
+        return Hooks.Permissions({
+            beforeInitialize: false,
+            afterInitialize: false,
+            beforeAddLiquidity: false,
+            afterAddLiquidity: true,
+            beforeRemoveLiquidity: false,
+            afterRemoveLiquidity: true,
+            beforeSwap: false,
+            afterSwap: true,
+            beforeDonate: false,
+            afterDonate: true,
+            beforeSwapReturnDelta: false,
+            afterSwapReturnDelta: false,
+            afterAddLiquidityReturnDelta: false,
+            afterRemoveLiquidityReturnDelta: false
+        });
     }
 
     /**
@@ -156,7 +150,12 @@ contract ReserveTrackingHook is IHooks {
         address sender,
         PoolKey calldata key,
         uint160 sqrtPriceX96
-    ) external pure override returns (bytes4) {
+    )
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         return this.beforeInitialize.selector;
     }
 
@@ -174,7 +173,12 @@ contract ReserveTrackingHook is IHooks {
         PoolKey calldata key,
         uint160 sqrtPriceX96,
         int24 tick
-    ) external pure override returns (bytes4) {
+    )
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         return this.afterInitialize.selector;
     }
 
@@ -192,7 +196,12 @@ contract ReserveTrackingHook is IHooks {
         PoolKey calldata key,
         IPoolManager.ModifyLiquidityParams calldata params,
         bytes calldata hookData
-    ) external pure override returns (bytes4) {
+    )
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         return this.beforeAddLiquidity.selector;
     }
 
@@ -215,13 +224,15 @@ contract ReserveTrackingHook is IHooks {
         BalanceDelta delta,
         BalanceDelta feesAccrued,
         bytes calldata hookData
-    ) external override onlyByPoolManager returns (bytes4, BalanceDelta) {
+    )
+        external
+        override
+        onlyByPoolManager
+        returns (bytes4, BalanceDelta)
+    {
         PoolId poolId = key.toId();
         _updateReserves(poolId, delta);
-        return (
-            this.afterAddLiquidity.selector,
-            BalanceDeltaLibrary.ZERO_DELTA
-        );
+        return (this.afterAddLiquidity.selector, BalanceDeltaLibrary.ZERO_DELTA);
     }
 
     /**
@@ -238,7 +249,12 @@ contract ReserveTrackingHook is IHooks {
         PoolKey calldata key,
         IPoolManager.ModifyLiquidityParams calldata params,
         bytes calldata hookData
-    ) external pure override returns (bytes4) {
+    )
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         return this.beforeRemoveLiquidity.selector;
     }
 
@@ -262,13 +278,15 @@ contract ReserveTrackingHook is IHooks {
         BalanceDelta delta,
         BalanceDelta feesAccrued,
         bytes calldata hookData
-    ) external override onlyByPoolManager returns (bytes4, BalanceDelta) {
+    )
+        external
+        override
+        onlyByPoolManager
+        returns (bytes4, BalanceDelta)
+    {
         PoolId poolId = key.toId();
         _updateReserves(poolId, delta);
-        return (
-            this.afterRemoveLiquidity.selector,
-            BalanceDeltaLibrary.ZERO_DELTA
-        );
+        return (this.afterRemoveLiquidity.selector, BalanceDeltaLibrary.ZERO_DELTA);
     }
 
     /**
@@ -287,7 +305,12 @@ contract ReserveTrackingHook is IHooks {
         PoolKey calldata key,
         IPoolManager.SwapParams calldata params,
         bytes calldata hookData
-    ) external pure override returns (bytes4, BeforeSwapDelta, uint24) {
+    )
+        external
+        pure
+        override
+        returns (bytes4, BeforeSwapDelta, uint24)
+    {
         return (this.beforeSwap.selector, BeforeSwapDelta.wrap(0), 0);
     }
 
@@ -309,7 +332,12 @@ contract ReserveTrackingHook is IHooks {
         IPoolManager.SwapParams calldata params,
         BalanceDelta delta,
         bytes calldata hookData
-    ) external override onlyByPoolManager returns (bytes4, int128) {
+    )
+        external
+        override
+        onlyByPoolManager
+        returns (bytes4, int128)
+    {
         PoolId poolId = key.toId();
         _updateReserves(poolId, delta);
         return (this.afterSwap.selector, 0);
@@ -331,7 +359,12 @@ contract ReserveTrackingHook is IHooks {
         uint256 amount0,
         uint256 amount1,
         bytes calldata hookData
-    ) external pure override returns (bytes4) {
+    )
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         return this.beforeDonate.selector;
     }
 
@@ -352,22 +385,25 @@ contract ReserveTrackingHook is IHooks {
         uint256 amount0,
         uint256 amount1,
         bytes calldata hookData
-    ) external override onlyByPoolManager returns (bytes4) {
+    )
+        external
+        override
+        onlyByPoolManager
+        returns (bytes4)
+    {
         PoolId poolId = key.toId();
         reserve0[poolId] += amount0;
         reserve1[poolId] += amount1;
         return this.afterDonate.selector;
     }
-   
+
     /**
      * @notice Gets the current reserves for a pool
      * @param poolId The pool ID to query
      * @return reserve0 The reserve amount of token0
      * @return reserve1 The reserve amount of token1
      */
-    function getReserves(
-        PoolId poolId
-    ) external view returns (uint256, uint256) {
+    function getReserves(PoolId poolId) external view returns (uint256, uint256) {
         return (reserve0[poolId], reserve1[poolId]);
     }
 
@@ -384,17 +420,15 @@ contract ReserveTrackingHook is IHooks {
         if (amount0 < 0) {
             reserve0[poolId] += uint256(uint128(-amount0));
         } else if (amount0 > 0) {
-            reserve0[poolId] = reserve0[poolId] > uint256(uint128(amount0))
-                ? reserve0[poolId] - uint256(uint128(amount0))
-                : 0;
+            reserve0[poolId] =
+                reserve0[poolId] > uint256(uint128(amount0)) ? reserve0[poolId] - uint256(uint128(amount0)) : 0;
         }
 
         if (amount1 < 0) {
             reserve1[poolId] += uint256(uint128(-amount1));
         } else if (amount1 > 0) {
-            reserve1[poolId] = reserve1[poolId] > uint256(uint128(amount1))
-                ? reserve1[poolId] - uint256(uint128(amount1))
-                : 0;
+            reserve1[poolId] =
+                reserve1[poolId] > uint256(uint128(amount1)) ? reserve1[poolId] - uint256(uint128(amount1)) : 0;
         }
     }
 }
