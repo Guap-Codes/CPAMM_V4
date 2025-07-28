@@ -65,19 +65,19 @@ forge script scripts/deploy.s.sol --broadcast --rpc-url $RPC_URL
 
 ## 📖 Overview
 
-   - CPAMM.sol:
+   - **CPAMM.sol**:
     Core “Concentrated Permissionless AMM” logic for evenly distributed liquidity across the full tick range.
 
-   - UniswapV4Pair.sol:
+   - **UniswapV4Pair.sol**:
     ERC‑20 wrapper & per‑pool state management, hooking into the Uniswap V4 PoolManager.
 
-   - ReserveTrackingHook.sol:
+   - **ReserveTrackingHook.sol**:
     Hook that records & exposes pool reserves to off‑chain systems and the periphery.
 
-   - CPAMMFactory.sol:
+   - **CPAMMFactory.sol**:
     Deploys new pools, wires up hooks, and manages factory-level governance.
 
-   - Periphery:
+   - **Periphery**:
 
         Router.sol: single‑entry point for swaps & liquidity operations
 
@@ -87,7 +87,7 @@ forge script scripts/deploy.s.sol --broadcast --rpc-url $RPC_URL
 
         Governance.sol: permissioned voting & fee‑update proposals
 
-   - lib/
+   - **lib/**
     Shared utilities: tick/price math, pool‑key validation, liquidity math.
 
 
